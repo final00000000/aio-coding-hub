@@ -262,7 +262,6 @@ export function CliManagerClaudeTab({
   const [permissionsAllowText, setPermissionsAllowText] = useState("");
   const [permissionsAskText, setPermissionsAskText] = useState("");
   const [permissionsDenyText, setPermissionsDenyText] = useState("");
-
   useEffect(() => {
     if (!claudeSettings) return;
     setModelText(claudeSettings.model ?? "");
