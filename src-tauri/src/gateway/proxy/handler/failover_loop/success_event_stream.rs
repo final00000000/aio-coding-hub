@@ -12,7 +12,6 @@ pub(super) async fn handle_success_event_stream(
     resp: reqwest::Response,
     status: StatusCode,
     mut response_headers: HeaderMap,
-    gemini_oauth_response_mode: Option<gemini_oauth::GeminiOAuthResponseMode>,
 ) -> LoopControl {
     let common = CommonCtxOwned::from(ctx);
     let provider_ctx_owned = ProviderCtxOwned::from(provider_ctx);
@@ -35,6 +34,7 @@ pub(super) async fn handle_success_event_stream(
         attempt_started_ms,
         attempt_started,
         circuit_before,
+        gemini_oauth_response_mode,
     } = attempt_ctx;
     let selection_method = dc::selection_method(provider_index, retry_index, session_reuse);
     let reason_code = dc::success_reason_code(provider_index, retry_index);
