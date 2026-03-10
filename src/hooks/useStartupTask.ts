@@ -16,5 +16,5 @@ export function useStartupTask(task: () => Promise<unknown>, stage: string, mess
         error: String(error),
       });
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [message, stage, task]);
 }

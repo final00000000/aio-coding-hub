@@ -39,5 +39,5 @@ export function useAsyncListener(
       cancelled = true;
       cleanup?.();
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [message, stage, subscribe]);
 }

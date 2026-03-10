@@ -1,5 +1,6 @@
 mod support;
 
+use aio_coding_hub_lib::test_support::ProviderUpsertJsonInput;
 use support::{json_array, json_bool, json_f64, json_i64, json_str};
 
 #[test]
@@ -13,48 +14,52 @@ fn providers_crud_roundtrip() {
 
     let p1 = aio_coding_hub_lib::test_support::provider_upsert_json(
         &handle,
-        None,
-        "claude",
-        "P1",
-        vec!["https://api.anthropic.com".to_string()],
-        "order",
-        Some("k1"),
-        true,
-        1.0,
-        Some(100),
-        None,
-        Some(5.0),
-        Some(100.0),
-        Some("fixed"),
-        Some("01:02:03"),
-        Some(300.0),
-        Some(1000.0),
-        Some(10000.0),
+        ProviderUpsertJsonInput {
+            provider_id: None,
+            cli_key: "claude".to_string(),
+            name: "P1".to_string(),
+            base_urls: vec!["https://api.anthropic.com".to_string()],
+            base_url_mode: "order".to_string(),
+            api_key: Some("k1".to_string()),
+            enabled: true,
+            cost_multiplier: 1.0,
+            priority: Some(100),
+            claude_models: None,
+            limit_5h_usd: Some(5.0),
+            limit_daily_usd: Some(100.0),
+            daily_reset_mode: Some("fixed".to_string()),
+            daily_reset_time: Some("01:02:03".to_string()),
+            limit_weekly_usd: Some(300.0),
+            limit_monthly_usd: Some(1000.0),
+            limit_total_usd: Some(10000.0),
+        },
     )
     .expect("insert provider 1");
 
     let p2 = aio_coding_hub_lib::test_support::provider_upsert_json(
         &handle,
-        None,
-        "claude",
-        "P2",
-        vec![
-            "https://api.anthropic.com".to_string(),
-            "https://api.anthropic.com/v2".to_string(),
-        ],
-        "ping",
-        Some("k2"),
-        true,
-        1.0,
-        Some(100),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
+        ProviderUpsertJsonInput {
+            provider_id: None,
+            cli_key: "claude".to_string(),
+            name: "P2".to_string(),
+            base_urls: vec![
+                "https://api.anthropic.com".to_string(),
+                "https://api.anthropic.com/v2".to_string(),
+            ],
+            base_url_mode: "ping".to_string(),
+            api_key: Some("k2".to_string()),
+            enabled: true,
+            cost_multiplier: 1.0,
+            priority: Some(100),
+            claude_models: None,
+            limit_5h_usd: None,
+            limit_daily_usd: None,
+            daily_reset_mode: None,
+            daily_reset_time: None,
+            limit_weekly_usd: None,
+            limit_monthly_usd: None,
+            limit_total_usd: None,
+        },
     )
     .expect("insert provider 2");
 
@@ -83,23 +88,25 @@ fn providers_crud_roundtrip() {
 
     let updated = aio_coding_hub_lib::test_support::provider_upsert_json(
         &handle,
-        Some(id1),
-        "claude",
-        "P1-renamed",
-        vec!["https://api.anthropic.com".to_string()],
-        "order",
-        None,
-        true,
-        1.0,
-        Some(101),
-        None,
-        Some(5.0),
-        Some(100.0),
-        Some("fixed"),
-        Some("01:02:03"),
-        Some(300.0),
-        Some(1000.0),
-        Some(10000.0),
+        ProviderUpsertJsonInput {
+            provider_id: Some(id1),
+            cli_key: "claude".to_string(),
+            name: "P1-renamed".to_string(),
+            base_urls: vec!["https://api.anthropic.com".to_string()],
+            base_url_mode: "order".to_string(),
+            api_key: None,
+            enabled: true,
+            cost_multiplier: 1.0,
+            priority: Some(101),
+            claude_models: None,
+            limit_5h_usd: Some(5.0),
+            limit_daily_usd: Some(100.0),
+            daily_reset_mode: Some("fixed".to_string()),
+            daily_reset_time: Some("01:02:03".to_string()),
+            limit_weekly_usd: Some(300.0),
+            limit_monthly_usd: Some(1000.0),
+            limit_total_usd: Some(10000.0),
+        },
     )
     .expect("update provider 1");
     assert_eq!(json_str(&updated, "name"), "P1-renamed");

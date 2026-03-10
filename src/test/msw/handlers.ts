@@ -2,7 +2,7 @@
 
 import { http, HttpResponse } from "msw";
 import { TAURI_ENDPOINT } from "../tauriEndpoint";
-import type { CliKey } from "../../services/providers";
+import type { CliKey, ClaudeModels, ProviderSummary } from "../../services/providers";
 import {
   buildCliProxySetEnabledResult,
   getAppAboutState,
@@ -12,6 +12,7 @@ import {
   getGatewayStatusState,
   getProvidersState,
   getSettingsState,
+  setProvidersState,
   getSortModeActiveState,
   getSortModesState,
   getUsageSummaryState,
@@ -112,7 +113,75 @@ export const handlers = [
     return HttpResponse.json(getProvidersState(payload.cliKey ?? "claude"));
   }),
 
-  http.post(`${TAURI_ENDPOINT}/provider_upsert`, () => HttpResponse.json(null)),
+  http.post(`${TAURI_ENDPOINT}/provider_upsert`, async ({ request }) => {
+    const payload = await withJson<{ input?: Record<string, unknown> }>(request);
+    const input = payload.input;
+    if (!input) {
+      return HttpResponse.json({ error: "missing provider_upsert input" }, { status: 400 });
+    }
+
+    const cliKeyRaw = input.cliKey;
+    if (cliKeyRaw !== "claude" && cliKeyRaw !== "codex" && cliKeyRaw !== "gemini") {
+      return HttpResponse.json({ error: "invalid provider_upsert cliKey" }, { status: 400 });
+    }
+    const cliKey = cliKeyRaw as CliKey;
+
+    if (typeof input.name !== "string" || !Array.isArray(input.baseUrls)) {
+      return HttpResponse.json({ error: "invalid provider_upsert payload" }, { status: 400 });
+    }
+
+    const current = getProvidersState(cliKey);
+    const requestedId = typeof input.providerId === "number" ? input.providerId : null;
+    const existing =
+      requestedId == null ? null : (current.find((row) => row.id === requestedId) ?? null);
+    const nextId = requestedId ?? Math.max(0, ...current.map((row) => row.id)) + 1;
+    const now = Date.now();
+    const summary: ProviderSummary = {
+      id: nextId,
+      cli_key: cliKey,
+      name: input.name,
+      base_urls: input.baseUrls.map((value) => String(value)),
+      base_url_mode: input.baseUrlMode === "ping" ? "ping" : "order",
+      claude_models:
+        input.claudeModels && typeof input.claudeModels === "object"
+          ? (input.claudeModels as ClaudeModels)
+          : {},
+      enabled: Boolean(input.enabled),
+      priority: typeof input.priority === "number" ? input.priority : (existing?.priority ?? 100),
+      cost_multiplier:
+        typeof input.costMultiplier === "number"
+          ? input.costMultiplier
+          : (existing?.cost_multiplier ?? 1),
+      limit_5h_usd:
+        typeof input.limit5hUsd === "number"
+          ? input.limit5hUsd
+          : typeof input.limit5HUsd === "number"
+            ? input.limit5HUsd
+            : null,
+      limit_daily_usd: typeof input.limitDailyUsd === "number" ? input.limitDailyUsd : null,
+      daily_reset_mode: input.dailyResetMode === "rolling" ? "rolling" : "fixed",
+      daily_reset_time:
+        typeof input.dailyResetTime === "string" ? input.dailyResetTime : "00:00:00",
+      limit_weekly_usd: typeof input.limitWeeklyUsd === "number" ? input.limitWeeklyUsd : null,
+      limit_monthly_usd: typeof input.limitMonthlyUsd === "number" ? input.limitMonthlyUsd : null,
+      limit_total_usd: typeof input.limitTotalUsd === "number" ? input.limitTotalUsd : null,
+      tags: Array.isArray(input.tags) ? input.tags.map((value) => String(value)) : [],
+      note: typeof input.note === "string" ? input.note : "",
+      created_at: existing?.created_at ?? now,
+      updated_at: now,
+      auth_mode: input.authMode === "oauth" ? "oauth" : "api_key",
+      oauth_provider_type: existing?.oauth_provider_type ?? null,
+      oauth_email: existing?.oauth_email ?? null,
+      oauth_expires_at: existing?.oauth_expires_at ?? null,
+      oauth_last_error: existing?.oauth_last_error ?? null,
+    };
+
+    setProvidersState(
+      cliKey,
+      existing ? current.map((row) => (row.id === nextId ? summary : row)) : [...current, summary]
+    );
+    return HttpResponse.json(summary);
+  }),
 
   http.post(`${TAURI_ENDPOINT}/provider_set_enabled`, () => HttpResponse.json(null)),
 

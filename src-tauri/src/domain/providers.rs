@@ -12,7 +12,7 @@ const DEFAULT_PRIORITY: i64 = 100;
 const MAX_MODEL_NAME_LEN: usize = 200;
 const MAX_LIMIT_USD: f64 = 1_000_000_000.0;
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum DailyResetMode {
     Fixed,
@@ -34,6 +34,46 @@ impl DailyResetMode {
             Self::Rolling => "rolling",
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ProviderAuthMode {
+    ApiKey,
+    Oauth,
+}
+
+impl ProviderAuthMode {
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::ApiKey => "api_key",
+            Self::Oauth => "oauth",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ProviderUpsertParams {
+    pub provider_id: Option<i64>,
+    pub cli_key: String,
+    pub name: String,
+    pub base_urls: Vec<String>,
+    pub base_url_mode: ProviderBaseUrlMode,
+    pub auth_mode: Option<ProviderAuthMode>,
+    pub api_key: Option<String>,
+    pub enabled: bool,
+    pub cost_multiplier: f64,
+    pub priority: Option<i64>,
+    pub claude_models: Option<ClaudeModels>,
+    pub limit_5h_usd: Option<f64>,
+    pub limit_daily_usd: Option<f64>,
+    pub daily_reset_mode: Option<DailyResetMode>,
+    pub daily_reset_time: Option<String>,
+    pub limit_weekly_usd: Option<f64>,
+    pub limit_monthly_usd: Option<f64>,
+    pub limit_total_usd: Option<f64>,
+    pub tags: Option<Vec<String>>,
+    pub note: Option<String>,
 }
 
 fn parse_reset_time_hms(input: &str) -> Option<(u8, u8, u8)> {
@@ -109,7 +149,7 @@ fn validate_limit_usd(
     Ok(Some(v))
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, specta::Type)]
 pub struct ClaudeModels {
     #[serde(default)]
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -222,7 +262,7 @@ fn normalize_tags(tags: Vec<String>) -> Vec<String> {
         .collect()
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
 pub enum ProviderBaseUrlMode {
     Order,
@@ -246,7 +286,7 @@ impl ProviderBaseUrlMode {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, specta::Type)]
 pub struct ProviderSummary {
     pub id: i64,
     pub cli_key: String,
@@ -904,30 +944,32 @@ fn next_sort_order(conn: &Connection, cli_key: &str) -> crate::shared::error::Ap
     .map_err(|e| db_err!("failed to query next sort_order: {e}"))
 }
 
-#[allow(clippy::too_many_arguments)]
 pub fn upsert(
     db: &db::Db,
-    provider_id: Option<i64>,
-    cli_key: &str,
-    name: &str,
-    base_urls: Vec<String>,
-    base_url_mode: &str,
-    auth_mode: Option<&str>,
-    api_key: Option<&str>,
-    enabled: bool,
-    cost_multiplier: f64,
-    priority: Option<i64>,
-    claude_models: Option<ClaudeModels>,
-    limit_5h_usd: Option<f64>,
-    limit_daily_usd: Option<f64>,
-    daily_reset_mode: Option<&str>,
-    daily_reset_time: Option<&str>,
-    limit_weekly_usd: Option<f64>,
-    limit_monthly_usd: Option<f64>,
-    limit_total_usd: Option<f64>,
-    tags: Option<Vec<String>>,
-    note: Option<&str>,
+    input: ProviderUpsertParams,
 ) -> crate::shared::error::AppResult<ProviderSummary> {
+    let ProviderUpsertParams {
+        provider_id,
+        cli_key,
+        name,
+        base_urls,
+        base_url_mode,
+        auth_mode,
+        api_key,
+        enabled,
+        cost_multiplier,
+        priority,
+        claude_models,
+        limit_5h_usd,
+        limit_daily_usd,
+        daily_reset_mode,
+        daily_reset_time,
+        limit_weekly_usd,
+        limit_monthly_usd,
+        limit_total_usd,
+        tags,
+        note,
+    } = input;
     let cli_key = cli_key.trim();
     validate_cli_key(cli_key)?;
 
@@ -938,13 +980,8 @@ pub fn upsert(
             .into());
     }
 
-    let requested_auth_mode = auth_mode.map(str::trim).unwrap_or("api_key");
-    if !matches!(requested_auth_mode, "api_key" | "oauth") {
-        return Err("SEC_INVALID_INPUT: auth_mode must be 'api_key' or 'oauth'"
-            .to_string()
-            .into());
-    }
-    let is_oauth = requested_auth_mode == "oauth";
+    let requested_auth_mode = auth_mode.unwrap_or(ProviderAuthMode::ApiKey);
+    let is_oauth = requested_auth_mode == ProviderAuthMode::Oauth;
 
     let base_urls = if is_oauth {
         // OAuth providers don't need base URLs — the adapter knows the endpoint.
@@ -959,12 +996,10 @@ pub fn upsert(
     };
     let base_url_primary = base_urls.first().cloned().unwrap_or_default();
 
-    let base_url_mode = ProviderBaseUrlMode::parse(base_url_mode)
-        .ok_or_else(|| "SEC_INVALID_INPUT: base_url_mode must be 'order' or 'ping'".to_string())?;
     let base_urls_json =
         serde_json::to_string(&base_urls).map_err(|e| format!("SYSTEM_ERROR: {e}"))?;
 
-    let api_key = api_key.map(str::trim).filter(|v| !v.is_empty());
+    let api_key = api_key.as_deref().map(str::trim).filter(|v| !v.is_empty());
 
     if !cost_multiplier.is_finite() || !(0.0..=1000.0).contains(&cost_multiplier) {
         return Err(
@@ -1010,19 +1045,15 @@ pub fn upsert(
             let limit_monthly_usd = validate_limit_usd("limit_monthly_usd", limit_monthly_usd)?;
             let limit_total_usd = validate_limit_usd("limit_total_usd", limit_total_usd)?;
 
-            let daily_reset_mode_raw = daily_reset_mode.unwrap_or("fixed");
-            let daily_reset_mode =
-                DailyResetMode::parse(daily_reset_mode_raw).ok_or_else(|| {
-                    "SEC_INVALID_INPUT: daily_reset_mode must be 'fixed' or 'rolling'".to_string()
-                })?;
-            let daily_reset_time_raw = daily_reset_time.unwrap_or("00:00:00");
+            let daily_reset_mode = daily_reset_mode.unwrap_or(DailyResetMode::Fixed);
+            let daily_reset_time_raw = daily_reset_time.as_deref().unwrap_or("00:00:00");
             let daily_reset_time =
                 normalize_reset_time_hms_strict("daily_reset_time", daily_reset_time_raw)?;
 
             let tags_normalized = normalize_tags(tags.unwrap_or_default());
             let tags_json_value = serde_json::to_string(&tags_normalized)
                 .map_err(|e| format!("SYSTEM_ERROR: {e}"))?;
-            let note_value = note.unwrap_or("").trim().to_string();
+            let note_value = note.as_deref().unwrap_or("").trim().to_string();
             if note_value.len() > 500 {
                 return Err("SEC_INVALID_INPUT: note must be at most 500 characters"
                     .to_string()
@@ -1065,7 +1096,7 @@ INSERT INTO providers(
                     base_url_primary,
                     base_urls_json,
                     base_url_mode.as_str(),
-                    requested_auth_mode,
+                    requested_auth_mode.as_str(),
                     claude_models_json,
                     api_key,
                     sort_order,
@@ -1145,15 +1176,9 @@ INSERT INTO providers(
 
             // Resolve auth_mode: use requested if provided, else keep existing.
             let next_auth_mode = auth_mode
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
+                .map(ProviderAuthMode::as_str)
                 .unwrap_or(existing_auth_mode_raw.as_str());
-            if !matches!(next_auth_mode, "api_key" | "oauth") {
-                return Err("SEC_INVALID_INPUT: auth_mode must be 'api_key' or 'oauth'"
-                    .to_string()
-                    .into());
-            }
-            let next_is_oauth = next_auth_mode == "oauth";
+            let next_is_oauth = next_auth_mode == ProviderAuthMode::Oauth.as_str();
 
             let next_api_key = api_key.unwrap_or(existing_api_key.as_str());
             if !next_is_oauth && next_api_key.trim().is_empty() {
@@ -1194,14 +1219,9 @@ INSERT INTO providers(
             let existing_daily_reset_time =
                 normalize_reset_time_hms_lossy(&existing_daily_reset_time_raw);
 
-            let next_daily_reset_mode = match daily_reset_mode {
-                None => existing_daily_reset_mode,
-                Some(v) => DailyResetMode::parse(v).ok_or_else(|| {
-                    "SEC_INVALID_INPUT: daily_reset_mode must be 'fixed' or 'rolling'".to_string()
-                })?,
-            };
+            let next_daily_reset_mode = daily_reset_mode.unwrap_or(existing_daily_reset_mode);
 
-            let next_daily_reset_time = match daily_reset_time {
+            let next_daily_reset_time = match daily_reset_time.as_deref() {
                 None => existing_daily_reset_time,
                 Some(v) => normalize_reset_time_hms_strict("daily_reset_time", v)?,
             };

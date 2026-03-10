@@ -15,7 +15,35 @@ const ENV_MCP_TIMEOUT: &str = "MCP_TIMEOUT";
 const ENV_ANTHROPIC_BASE_URL: &str = "ANTHROPIC_BASE_URL";
 const ENV_ANTHROPIC_AUTH_TOKEN: &str = "ANTHROPIC_AUTH_TOKEN";
 
+#[derive(serde::Deserialize, specta::Type)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct ProviderUpsertInput {
+    pub provider_id: Option<i64>,
+    pub cli_key: String,
+    pub name: String,
+    pub base_urls: Vec<String>,
+    pub base_url_mode: providers::ProviderBaseUrlMode,
+    pub auth_mode: Option<providers::ProviderAuthMode>,
+    pub api_key: Option<String>,
+    pub enabled: bool,
+    pub cost_multiplier: f64,
+    pub priority: Option<i64>,
+    pub claude_models: Option<providers::ClaudeModels>,
+    #[serde(rename = "limit5hUsd", alias = "limit5HUsd")]
+    #[specta(rename = "limit5hUsd")]
+    pub limit_5h_usd: Option<f64>,
+    pub limit_daily_usd: Option<f64>,
+    pub daily_reset_mode: Option<providers::DailyResetMode>,
+    pub daily_reset_time: Option<String>,
+    pub limit_weekly_usd: Option<f64>,
+    pub limit_monthly_usd: Option<f64>,
+    pub limit_total_usd: Option<f64>,
+    pub tags: Option<Vec<String>>,
+    pub note: Option<String>,
+}
+
 #[tauri::command]
+#[specta::specta]
 pub(crate) async fn providers_list(
     app: tauri::AppHandle,
     db_state: tauri::State<'_, DbInitState>,
@@ -30,31 +58,35 @@ pub(crate) async fn providers_list(
 }
 
 #[tauri::command]
-#[allow(clippy::too_many_arguments)]
+#[specta::specta]
 pub(crate) async fn provider_upsert(
     app: tauri::AppHandle,
     db_state: tauri::State<'_, DbInitState>,
-    provider_id: Option<i64>,
-    cli_key: String,
-    name: String,
-    base_urls: Vec<String>,
-    base_url_mode: String,
-    auth_mode: Option<String>,
-    api_key: Option<String>,
-    enabled: bool,
-    cost_multiplier: f64,
-    priority: Option<i64>,
-    claude_models: Option<providers::ClaudeModels>,
-    limit_5h_usd: Option<f64>,
-    limit_daily_usd: Option<f64>,
-    daily_reset_mode: Option<String>,
-    daily_reset_time: Option<String>,
-    limit_weekly_usd: Option<f64>,
-    limit_monthly_usd: Option<f64>,
-    limit_total_usd: Option<f64>,
-    tags: Option<Vec<String>>,
-    note: Option<String>,
+    input: ProviderUpsertInput,
 ) -> Result<providers::ProviderSummary, String> {
+    let ProviderUpsertInput {
+        provider_id,
+        cli_key,
+        name,
+        base_urls,
+        base_url_mode,
+        auth_mode,
+        api_key,
+        enabled,
+        cost_multiplier,
+        priority,
+        claude_models,
+        limit_5h_usd,
+        limit_daily_usd,
+        daily_reset_mode,
+        daily_reset_time,
+        limit_weekly_usd,
+        limit_monthly_usd,
+        limit_total_usd,
+        tags,
+        note,
+    } = input;
+
     let is_create = provider_id.is_none();
     let name_for_log = name.clone();
     let cli_key_for_log = cli_key.clone();
@@ -62,26 +94,28 @@ pub(crate) async fn provider_upsert(
     let result = blocking::run("provider_upsert", move || {
         providers::upsert(
             &db,
-            provider_id,
-            &cli_key,
-            &name,
-            base_urls,
-            &base_url_mode,
-            auth_mode.as_deref(),
-            api_key.as_deref(),
-            enabled,
-            cost_multiplier,
-            priority,
-            claude_models,
-            limit_5h_usd,
-            limit_daily_usd,
-            daily_reset_mode.as_deref(),
-            daily_reset_time.as_deref(),
-            limit_weekly_usd,
-            limit_monthly_usd,
-            limit_total_usd,
-            tags,
-            note.as_deref(),
+            providers::ProviderUpsertParams {
+                provider_id,
+                cli_key,
+                name,
+                base_urls,
+                base_url_mode,
+                auth_mode,
+                api_key,
+                enabled,
+                cost_multiplier,
+                priority,
+                claude_models,
+                limit_5h_usd,
+                limit_daily_usd,
+                daily_reset_mode,
+                daily_reset_time,
+                limit_weekly_usd,
+                limit_monthly_usd,
+                limit_total_usd,
+                tags,
+                note,
+            },
         )
     })
     .await
@@ -928,5 +962,67 @@ mod tests {
 
         assert!(command.starts_with("powershell -NoLogo -NoExit -ExecutionPolicy Bypass -File"));
         assert!(command.contains("\"C:\\\\Temp\\\\aio_launcher.ps1\""));
+    }
+    #[test]
+    fn provider_upsert_input_deserializes_runtime_camel_case_shape() {
+        let input: ProviderUpsertInput = serde_json::from_value(serde_json::json!({
+            "providerId": 1,
+            "cliKey": "claude",
+            "name": "P1",
+            "baseUrls": ["https://example.com"],
+            "baseUrlMode": "order",
+            "authMode": "api_key",
+            "apiKey": "k1",
+            "enabled": true,
+            "costMultiplier": 1.0,
+            "priority": 10,
+            "claudeModels": null,
+            "limit5hUsd": 5.0,
+            "limitDailyUsd": 10.0,
+            "dailyResetMode": "fixed",
+            "dailyResetTime": "00:00:00",
+            "limitWeeklyUsd": null,
+            "limitMonthlyUsd": null,
+            "limitTotalUsd": null,
+            "tags": ["x"],
+            "note": "n"
+        }))
+        .expect("deserialize provider input");
+
+        assert_eq!(input.base_url_mode, providers::ProviderBaseUrlMode::Order);
+        assert_eq!(input.auth_mode, Some(providers::ProviderAuthMode::ApiKey));
+        assert_eq!(input.limit_5h_usd, Some(5.0));
+        assert_eq!(
+            input.daily_reset_mode,
+            Some(providers::DailyResetMode::Fixed)
+        );
+    }
+
+    #[test]
+    fn provider_upsert_input_accepts_legacy_generated_limit_alias() {
+        let input: ProviderUpsertInput = serde_json::from_value(serde_json::json!({
+            "providerId": 1,
+            "cliKey": "claude",
+            "name": "P1",
+            "baseUrls": ["https://example.com"],
+            "baseUrlMode": "ping",
+            "enabled": true,
+            "costMultiplier": 1.0,
+            "limit5HUsd": 7.0,
+            "limitDailyUsd": null,
+            "dailyResetMode": "rolling",
+            "dailyResetTime": "00:00:00",
+            "limitWeeklyUsd": null,
+            "limitMonthlyUsd": null,
+            "limitTotalUsd": null
+        }))
+        .expect("deserialize provider input legacy alias");
+
+        assert_eq!(input.base_url_mode, providers::ProviderBaseUrlMode::Ping);
+        assert_eq!(input.limit_5h_usd, Some(7.0));
+        assert_eq!(
+            input.daily_reset_mode,
+            Some(providers::DailyResetMode::Rolling)
+        );
     }
 }

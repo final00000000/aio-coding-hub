@@ -2,7 +2,7 @@
 
 use crate::codex_paths;
 use crate::shared::fs::{read_optional_file, write_file_atomic_if_changed};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::path::Path;
 use tauri::Manager;
 
@@ -44,7 +44,9 @@ pub struct CodexConfigPatch {
     pub model_reasoning_effort: Option<String>,
     pub plan_mode_reasoning_effort: Option<String>,
     pub web_search: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_nullable_u64_patch")]
     pub model_context_window: Option<Option<u64>>,
+    #[serde(default, deserialize_with = "deserialize_nullable_u64_patch")]
     pub model_auto_compact_token_limit: Option<Option<u64>>,
     pub service_tier: Option<String>,
 
@@ -59,6 +61,15 @@ pub struct CodexConfigPatch {
     pub features_fast_mode: Option<bool>,
     pub features_remote_models: Option<bool>,
     pub features_multi_agent: Option<bool>,
+}
+
+fn deserialize_nullable_u64_patch<'de, D>(deserializer: D) -> Result<Option<Option<u64>>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    // Preserve the difference between "field omitted" and `"field": null` so
+    // the patch layer can delete existing TOML keys on explicit clear.
+    Option::<u64>::deserialize(deserializer).map(Some)
 }
 
 #[derive(Debug, Clone, Serialize)]

@@ -9,6 +9,58 @@ fn serialize_json(
         .map_err(|e| format!("SYSTEM_ERROR: failed to serialize json: {e}"))?)
 }
 
+#[derive(Debug, Clone)]
+pub struct ProviderUpsertJsonInput {
+    pub provider_id: Option<i64>,
+    pub cli_key: String,
+    pub name: String,
+    pub base_urls: Vec<String>,
+    pub base_url_mode: String,
+    pub api_key: Option<String>,
+    pub enabled: bool,
+    pub cost_multiplier: f64,
+    pub priority: Option<i64>,
+    pub claude_models: Option<serde_json::Value>,
+    pub limit_5h_usd: Option<f64>,
+    pub limit_daily_usd: Option<f64>,
+    pub daily_reset_mode: Option<String>,
+    pub daily_reset_time: Option<String>,
+    pub limit_weekly_usd: Option<f64>,
+    pub limit_monthly_usd: Option<f64>,
+    pub limit_total_usd: Option<f64>,
+}
+
+fn parse_provider_base_url_mode(
+    input: &str,
+) -> crate::shared::error::AppResult<crate::providers::ProviderBaseUrlMode> {
+    match input.trim() {
+        "order" => Ok(crate::providers::ProviderBaseUrlMode::Order),
+        "ping" => Ok(crate::providers::ProviderBaseUrlMode::Ping),
+        _ => Err("SEC_INVALID_INPUT: base_url_mode must be 'order' or 'ping'"
+            .to_string()
+            .into()),
+    }
+}
+
+fn parse_daily_reset_mode(
+    input: Option<String>,
+) -> crate::shared::error::AppResult<Option<crate::providers::DailyResetMode>> {
+    match input
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        None => Ok(None),
+        Some("fixed") => Ok(Some(crate::providers::DailyResetMode::Fixed)),
+        Some("rolling") => Ok(Some(crate::providers::DailyResetMode::Rolling)),
+        Some(_) => Err(
+            "SEC_INVALID_INPUT: daily_reset_mode must be 'fixed' or 'rolling'"
+                .to_string()
+                .into(),
+        ),
+    }
+}
+
 pub fn app_data_dir<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
 ) -> crate::shared::error::AppResult<PathBuf> {
@@ -156,41 +208,15 @@ pub fn providers_list_by_cli_json<R: tauri::Runtime>(
 #[allow(clippy::too_many_arguments)]
 pub fn provider_upsert_json<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
-    provider_id: Option<i64>,
-    cli_key: &str,
-    name: &str,
-    base_urls: Vec<String>,
-    base_url_mode: &str,
-    api_key: Option<&str>,
-    enabled: bool,
-    cost_multiplier: f64,
-    priority: Option<i64>,
-    claude_models: Option<serde_json::Value>,
-    limit_5h_usd: Option<f64>,
-    limit_daily_usd: Option<f64>,
-    daily_reset_mode: Option<&str>,
-    daily_reset_time: Option<&str>,
-    limit_weekly_usd: Option<f64>,
-    limit_monthly_usd: Option<f64>,
-    limit_total_usd: Option<f64>,
+    input: ProviderUpsertJsonInput,
 ) -> crate::shared::error::AppResult<serde_json::Value> {
     let db = crate::infra::db::init(app)?;
-    let claude_models = match claude_models {
-        None => None,
-        Some(value) => Some(
-            serde_json::from_value::<crate::providers::ClaudeModels>(value)
-                .map_err(|e| format!("SEC_INVALID_INPUT: invalid claude_models json: {e}"))?,
-        ),
-    };
-
-    let provider = crate::providers::upsert(
-        &db,
+    let ProviderUpsertJsonInput {
         provider_id,
         cli_key,
         name,
         base_urls,
         base_url_mode,
-        None, // auth_mode — default to api_key
         api_key,
         enabled,
         cost_multiplier,
@@ -203,8 +229,39 @@ pub fn provider_upsert_json<R: tauri::Runtime>(
         limit_weekly_usd,
         limit_monthly_usd,
         limit_total_usd,
-        None, // tags
-        None, // note
+    } = input;
+    let claude_models = match claude_models {
+        None => None,
+        Some(value) => Some(
+            serde_json::from_value::<crate::providers::ClaudeModels>(value)
+                .map_err(|e| format!("SEC_INVALID_INPUT: invalid claude_models json: {e}"))?,
+        ),
+    };
+
+    let provider = crate::providers::upsert(
+        &db,
+        crate::providers::ProviderUpsertParams {
+            provider_id,
+            cli_key,
+            name,
+            base_urls,
+            base_url_mode: parse_provider_base_url_mode(&base_url_mode)?,
+            auth_mode: None,
+            api_key,
+            enabled,
+            cost_multiplier,
+            priority,
+            claude_models,
+            limit_5h_usd,
+            limit_daily_usd,
+            daily_reset_mode: parse_daily_reset_mode(daily_reset_mode)?,
+            daily_reset_time,
+            limit_weekly_usd,
+            limit_monthly_usd,
+            limit_total_usd,
+            tags: None,
+            note: None,
+        },
     )?;
     serialize_json(provider)
 }

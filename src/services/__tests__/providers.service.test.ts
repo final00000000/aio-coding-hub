@@ -97,9 +97,14 @@ describe("services/providers", () => {
     expect(invokeTauriOrNull).toHaveBeenCalledWith(
       "provider_upsert",
       expect.objectContaining({
-        providerId: null,
-        cliKey: "claude",
-        name: "P1",
+        input: expect.objectContaining({
+          providerId: null,
+          cliKey: "claude",
+          name: "P1",
+          baseUrlMode: "order",
+          limit5hUsd: null,
+          dailyResetMode: "fixed",
+        }),
       })
     );
   });

@@ -75,6 +75,10 @@ describe("App (smoke)", () => {
     expect(await renderRouteAndFindHeading("#/settings", "设置")).toBeInTheDocument();
   });
 
+  it("redirects unknown hash routes back to home", async () => {
+    expect(await renderRouteAndFindHeading("#/definitely-missing", "首页")).toBeInTheDocument();
+  });
+
   it("logs warning when event listeners initialization fails", async () => {
     vi.mocked(listenGatewayEvents).mockRejectedValueOnce(new Error("gateway init failed"));
     vi.mocked(listenNoticeEvents).mockRejectedValueOnce(new Error("notice init failed"));

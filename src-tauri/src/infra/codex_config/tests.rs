@@ -212,6 +212,28 @@ model_auto_compact_token_limit = 900000
 }
 
 #[test]
+fn patch_deletes_model_linked_limits_when_json_null_is_deserialized() {
+    let input = r#"model_context_window = 1000000
+model_auto_compact_token_limit = 900000
+"#;
+
+    let patch: CodexConfigPatch = serde_json::from_value(serde_json::json!({
+        "model_context_window": null,
+        "model_auto_compact_token_limit": null,
+    }))
+    .expect("deserialize patch");
+
+    assert_eq!(patch.model_context_window, Some(None));
+    assert_eq!(patch.model_auto_compact_token_limit, Some(None));
+
+    let out = patch_config_toml(Some(input.as_bytes().to_vec()), patch).expect("patch_config_toml");
+
+    let s = String::from_utf8(out).expect("utf8");
+    assert!(!s.contains("model_context_window ="), "{s}");
+    assert!(!s.contains("model_auto_compact_token_limit ="), "{s}");
+}
+
+#[test]
 fn patch_deletes_fast_mode_and_service_tier_when_disabled() {
     let input = r#"service_tier = "fast"
 

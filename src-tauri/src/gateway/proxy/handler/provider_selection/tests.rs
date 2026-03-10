@@ -10,26 +10,28 @@ fn ids(items: &[providers::ProviderForGateway]) -> Vec<i64> {
 fn insert_provider(db: &crate::db::Db, name: &str, enabled: bool) -> providers::ProviderSummary {
     providers::upsert(
         db,
-        None,
-        "claude",
-        name,
-        vec!["https://example.com".to_string()],
-        "order",
-        None, // auth_mode
-        Some("k"),
-        enabled,
-        1.0,
-        Some(100),
-        None,
-        None,
-        None,
-        Some("fixed"),
-        Some("00:00:00"),
-        None,
-        None,
-        None,
-        None,
-        None, // note
+        providers::ProviderUpsertParams {
+            provider_id: None,
+            cli_key: "claude".to_string(),
+            name: name.to_string(),
+            base_urls: vec!["https://example.com".to_string()],
+            base_url_mode: providers::ProviderBaseUrlMode::Order,
+            auth_mode: None,
+            api_key: Some("k".to_string()),
+            enabled,
+            cost_multiplier: 1.0,
+            priority: Some(100),
+            claude_models: None,
+            limit_5h_usd: None,
+            limit_daily_usd: None,
+            daily_reset_mode: Some(providers::DailyResetMode::Fixed),
+            daily_reset_time: Some("00:00:00".to_string()),
+            limit_weekly_usd: None,
+            limit_monthly_usd: None,
+            limit_total_usd: None,
+            tags: None,
+            note: None,
+        },
     )
     .expect("insert provider")
 }

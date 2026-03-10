@@ -440,7 +440,7 @@ pub fn run() {
 ///
 /// Uses `tauri_specta::Builder` to export TypeScript bindings for the subset of
 /// Tauri commands annotated with `#[specta::specta]`.
-/// Currently only the `settings` module is registered (POC / gradual migration).
+/// Currently exports the `settings` and provider IPC contracts covered by `#[specta::specta]`.
 ///
 /// Run `cargo test export_bindings -- --ignored` to regenerate `src/generated/bindings.ts`.
 #[cfg(test)]
@@ -450,12 +450,19 @@ fn export_bindings() {
     let builder =
         tauri_specta::Builder::<tauri::Wry>::new().commands(tauri_specta::collect_commands![
             commands::settings::settings_get,
-            commands::settings::settings_set
+            commands::settings::settings_set,
+            commands::providers::providers_list,
+            commands::providers::provider_upsert
         ]);
 
     builder
         .export(
-            specta_typescript::Typescript::default(),
+            specta_typescript::Typescript::default()
+                .header(
+                    "/* eslint-disable */
+// @ts-nocheck",
+                )
+                .bigint(specta_typescript::BigIntExportBehavior::Number),
             "../src/generated/bindings.ts",
         )
         .expect("failed to export specta TypeScript bindings");

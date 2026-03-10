@@ -221,4 +221,47 @@ describe("components/cli-manager/tabs/CodexTab", () => {
       model_auto_compact_token_limit: null,
     });
   });
+
+  it("persists null for gpt-5.4 linked settings when input is zero or cleared", () => {
+    const persistCodexConfig = vi.fn();
+
+    render(
+      <CliManagerCodexTab
+        codexAvailable="available"
+        codexLoading={false}
+        codexConfigLoading={false}
+        codexConfigSaving={false}
+        codexConfigTomlLoading={false}
+        codexConfigTomlSaving={false}
+        codexInfo={createCodexInfo()}
+        codexConfig={createCodexConfig({
+          model: "gpt-5.4",
+          model_context_window: 1_000_000,
+          model_auto_compact_token_limit: 900_000,
+        })}
+        codexConfigToml={null}
+        refreshCodex={vi.fn()}
+        openCodexConfigDir={vi.fn()}
+        persistCodexConfig={persistCodexConfig}
+        persistCodexConfigToml={vi.fn().mockResolvedValue(false)}
+      />
+    );
+
+    const contextItem = screen.getByText("model_context_window").parentElement?.parentElement;
+    expect(contextItem).toBeTruthy();
+    const contextInput = within(contextItem as HTMLElement).getByRole("spinbutton");
+    fireEvent.change(contextInput, { target: { value: "0" } });
+    fireEvent.blur(contextInput);
+    expect(persistCodexConfig).toHaveBeenCalledWith({ model_context_window: null });
+
+    const compactItem = screen.getByText("model_auto_compact_token_limit").parentElement
+      ?.parentElement;
+    expect(compactItem).toBeTruthy();
+    const compactInput = within(compactItem as HTMLElement).getByRole("spinbutton");
+    fireEvent.change(compactInput, { target: { value: "" } });
+    fireEvent.blur(compactInput);
+    expect(persistCodexConfig).toHaveBeenCalledWith({
+      model_auto_compact_token_limit: null,
+    });
+  });
 });

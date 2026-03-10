@@ -21,6 +21,22 @@ export const commands = {
       else return { status: "error", error: e as any };
     }
   },
+  async providersList(cliKey: string): Promise<Result<ProviderSummary[], string>> {
+    try {
+      return { status: "ok", data: await TAURI_INVOKE("providers_list", { cliKey }) };
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      else return { status: "error", error: e as any };
+    }
+  },
+  async providerUpsert(input: ProviderUpsertInput): Promise<Result<ProviderSummary, string>> {
+    try {
+      return { status: "ok", data: await TAURI_INVOKE("provider_upsert", { input }) };
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      else return { status: "error", error: e as any };
+    }
+  },
 };
 
 /** user-defined events **/
@@ -36,7 +52,10 @@ export type AppSettings = {
   gateway_custom_listen_address: string;
   wsl_auto_config: boolean;
   wsl_target_cli: WslTargetCli;
+  wsl_host_address_mode: WslHostAddressMode;
+  wsl_custom_host_address: string;
   auto_start: boolean;
+  start_minimized: boolean;
   tray_enabled: boolean;
   enable_cli_proxy_startup_recovery: boolean;
   log_retention_days: number;
@@ -51,9 +70,12 @@ export type AppSettings = {
   circuit_breaker_failure_threshold: number;
   circuit_breaker_open_duration_minutes: number;
   enable_circuit_breaker_notice: boolean;
+  verbose_provider_error: boolean;
   intercept_anthropic_warmup_requests: boolean;
   enable_thinking_signature_rectifier: boolean;
+  enable_thinking_budget_rectifier: boolean;
   enable_codex_session_id_completion: boolean;
+  enable_claude_metadata_user_id_injection: boolean;
   enable_cache_anomaly_monitor: boolean;
   enable_task_complete_notify: boolean;
   enable_response_fixer: boolean;
@@ -63,7 +85,66 @@ export type AppSettings = {
   response_fixer_max_json_depth: number;
   response_fixer_max_fix_size: number;
 };
+export type ClaudeModels = {
+  main_model?: string | null;
+  reasoning_model?: string | null;
+  haiku_model?: string | null;
+  sonnet_model?: string | null;
+  opus_model?: string | null;
+};
+export type DailyResetMode = "fixed" | "rolling";
 export type GatewayListenMode = "localhost" | "wsl_auto" | "lan" | "custom";
+export type ProviderAuthMode = "api_key" | "oauth";
+export type ProviderBaseUrlMode = "order" | "ping";
+export type ProviderSummary = {
+  id: number;
+  cli_key: string;
+  name: string;
+  base_urls: string[];
+  base_url_mode: ProviderBaseUrlMode;
+  claude_models: ClaudeModels;
+  enabled: boolean;
+  priority: number;
+  cost_multiplier: number;
+  limit_5h_usd: number | null;
+  limit_daily_usd: number | null;
+  daily_reset_mode: DailyResetMode;
+  daily_reset_time: string;
+  limit_weekly_usd: number | null;
+  limit_monthly_usd: number | null;
+  limit_total_usd: number | null;
+  tags: string[];
+  note: string;
+  created_at: number;
+  updated_at: number;
+  auth_mode: string;
+  oauth_provider_type: string | null;
+  oauth_email: string | null;
+  oauth_expires_at: number | null;
+  oauth_last_error: string | null;
+};
+export type ProviderUpsertInput = {
+  providerId: number | null;
+  cliKey: string;
+  name: string;
+  baseUrls: string[];
+  baseUrlMode: ProviderBaseUrlMode;
+  authMode: ProviderAuthMode | null;
+  apiKey: string | null;
+  enabled: boolean;
+  costMultiplier: number;
+  priority: number | null;
+  claudeModels: ClaudeModels | null;
+  limit5hUsd: number | null;
+  limitDailyUsd: number | null;
+  dailyResetMode: DailyResetMode | null;
+  dailyResetTime: string | null;
+  limitWeeklyUsd: number | null;
+  limitMonthlyUsd: number | null;
+  limitTotalUsd: number | null;
+  tags: string[] | null;
+  note: string | null;
+};
 /**
  * Encapsulates all fields for the `settings_set` command.
  */
@@ -72,6 +153,7 @@ export type SettingsUpdate = {
   gatewayListenMode: GatewayListenMode | null;
   gatewayCustomListenAddress: string | null;
   autoStart: boolean;
+  startMinimized: boolean | null;
   trayEnabled: boolean | null;
   enableCliProxyStartupRecovery: boolean | null;
   logRetentionDays: number;
@@ -82,12 +164,15 @@ export type SettingsUpdate = {
   upstreamRequestTimeoutNonStreamingSeconds: number | null;
   interceptAnthropicWarmupRequests: boolean | null;
   enableThinkingSignatureRectifier: boolean | null;
+  enableThinkingBudgetRectifier: boolean | null;
+  enableClaudeMetadataUserIdInjection: boolean | null;
   enableCacheAnomalyMonitor: boolean | null;
   enableTaskCompleteNotify: boolean | null;
   enableResponseFixer: boolean | null;
   responseFixerFixEncoding: boolean | null;
   responseFixerFixSseFormat: boolean | null;
   responseFixerFixTruncatedJson: boolean | null;
+  verboseProviderError: boolean | null;
   failoverMaxAttemptsPerProvider: number;
   failoverMaxProvidersToTry: number;
   circuitBreakerFailureThreshold: number | null;
@@ -95,7 +180,10 @@ export type SettingsUpdate = {
   updateReleasesUrl: string | null;
   wslAutoConfig: boolean | null;
   wslTargetCli: WslTargetCli | null;
+  wslHostAddressMode: WslHostAddressMode | null;
+  wslCustomHostAddress: string | null;
 };
+export type WslHostAddressMode = "auto" | "custom";
 export type WslTargetCli = { claude: boolean; codex: boolean; gemini: boolean };
 
 /** tauri-specta globals **/
