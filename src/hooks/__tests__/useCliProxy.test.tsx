@@ -44,7 +44,7 @@ describe("hooks/useCliProxy", () => {
     const { result } = renderHook(() => useCliProxy());
 
     act(() => result.current.setCliProxyEnabled("codex" as any, true));
-    await waitFor(() => expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用"));
+    await waitFor(() => expect(mutateAsync).toHaveBeenCalledTimes(1));
 
     act(() => result.current.setCliProxyEnabled("codex" as any, true));
     await waitFor(() => expect(toast).toHaveBeenCalledWith("OK"));

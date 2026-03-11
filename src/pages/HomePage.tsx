@@ -23,7 +23,6 @@ import { Card } from "../ui/Card";
 import { Dialog } from "../ui/Dialog";
 import { PageHeader } from "../ui/PageHeader";
 import { TabList } from "../ui/TabList";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { useTraceStore } from "../services/traceStore";
 import { useHomeCircuitState } from "./home/hooks/useHomeCircuitState";
 import { useHomeSortMode } from "./home/hooks/useHomeSortMode";
@@ -39,8 +38,7 @@ const HOME_TABS: Array<{ key: HomeTabKey; label: string }> = [
 
 export function HomePage() {
   const { traces } = useTraceStore();
-  const tauriRuntime = hasTauriRuntime();
-  const showCustomTooltip = tauriRuntime;
+  const showCustomTooltip = true;
   const foregroundActive = useDocumentVisibility();
 
   const [tab, setTab] = useState<HomeTabKey>("overview");
@@ -58,11 +56,9 @@ export function HomePage() {
   });
   const activeSessions = sessionsQuery.data ?? [];
   const activeSessionsLoading = sessionsQuery.isLoading;
-  const activeSessionsAvailable: boolean | null = !tauriRuntime
-    ? false
-    : sessionsQuery.isLoading
-      ? null
-      : sessionsQuery.data != null;
+  const activeSessionsAvailable: boolean | null = sessionsQuery.isLoading
+    ? null
+    : sessionsQuery.data != null;
 
   const sortMode = useHomeSortMode(activeSessions);
   const cliProxyState = useHomeCliProxy();
@@ -79,11 +75,9 @@ export function HomePage() {
   const providerLimitRows = providerLimitQuery.data ?? [];
   const providerLimitLoading = providerLimitQuery.isLoading;
   const providerLimitRefreshing = providerLimitQuery.isFetching && !providerLimitQuery.isLoading;
-  const providerLimitAvailable: boolean | null = !tauriRuntime
-    ? false
-    : providerLimitQuery.isLoading
-      ? null
-      : providerLimitQuery.data != null;
+  const providerLimitAvailable: boolean | null = providerLimitQuery.isLoading
+    ? null
+    : providerLimitQuery.data != null;
 
   const requestLogsQuery = useRequestLogsListAllQuery(50, { enabled: tab === "overview" });
   useRequestLogsIncrementalPollQuery(50, {
@@ -94,11 +88,9 @@ export function HomePage() {
   const requestLogs = useMemo(() => requestLogsRaw ?? [], [requestLogsRaw]);
   const requestLogsLoading = requestLogsQuery.isLoading;
   const requestLogsRefreshing = requestLogsQuery.isFetching && !requestLogsQuery.isLoading;
-  const requestLogsAvailable: boolean | null = !tauriRuntime
-    ? false
-    : requestLogsQuery.isLoading
-      ? null
-      : requestLogsQuery.data != null;
+  const requestLogsAvailable: boolean | null = requestLogsQuery.isLoading
+    ? null
+    : requestLogsQuery.data != null;
 
   // --- Refresh callbacks ---
   const refreshUsageHeatmap = useCallback(() => {
@@ -123,16 +115,15 @@ export function HomePage() {
   useEffect(() => {
     const prev = tabRef.current;
     tabRef.current = tab;
-    if (!tauriRuntime) return;
     if (prev !== "overview" && tab === "overview") {
       void usageHeatmapQuery.refetch();
       void requestLogsQuery.refetch();
       void providerLimitQuery.refetch();
     }
-  }, [providerLimitQuery, requestLogsQuery, tab, tauriRuntime, usageHeatmapQuery]);
+  }, [providerLimitQuery, requestLogsQuery, tab, usageHeatmapQuery]);
 
   useWindowForeground({
-    enabled: tauriRuntime && tab === "overview",
+    enabled: tab === "overview",
     throttleMs: 1000,
     onForeground: () => {
       void usageHeatmapQuery.refetch();

@@ -29,21 +29,6 @@ vi.mock("../../services/wsl", async () => {
 });
 
 describe("query/wsl", () => {
-  it("does not call wslDetect without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useWslOverviewQuery(), { wrapper });
-    renderHook(() => useWslDetectionQuery(), { wrapper });
-    renderHook(() => useWslHostAddressQuery(), { wrapper });
-    renderHook(() => useWslConfigStatusQuery(["Ubuntu"]), { wrapper });
-    await Promise.resolve();
-
-    expect(wslDetect).not.toHaveBeenCalled();
-    expect(wslHostAddressGet).not.toHaveBeenCalled();
-    expect(wslConfigStatusGet).not.toHaveBeenCalled();
-  });
-
   it("fetches detection and host address with tauri runtime", async () => {
     setTauriRuntime();
 

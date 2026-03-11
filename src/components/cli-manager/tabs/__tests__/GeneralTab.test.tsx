@@ -83,7 +83,7 @@ describe("cli-manager/GeneralTab", () => {
       />
     );
 
-    expect(screen.getAllByText("仅在 Tauri Desktop 环境可用").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("数据不可用").length).toBeGreaterThan(0);
     expect(screen.getAllByText("不可用").length).toBeGreaterThan(0);
   });
 

@@ -1,13 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { logToConsole } from "../consoleLog";
 import { settingsGatewayRectifierSet } from "../settingsGatewayRectifier";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { invokeTauriOrNull } from "../tauriInvoke";
 
 vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
   return {
     ...actual,
-    hasTauriRuntime: vi.fn(),
     invokeTauriOrNull: vi.fn(),
   };
 });
@@ -21,28 +20,7 @@ vi.mock("../consoleLog", async () => {
 });
 
 describe("services/settingsGatewayRectifier", () => {
-  it("returns null without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    await expect(
-      settingsGatewayRectifierSet({
-        verbose_provider_error: true,
-        intercept_anthropic_warmup_requests: false,
-        enable_thinking_signature_rectifier: true,
-        enable_thinking_budget_rectifier: true,
-        enable_claude_metadata_user_id_injection: true,
-        enable_response_fixer: true,
-        response_fixer_fix_encoding: true,
-        response_fixer_fix_sse_format: true,
-        response_fixer_fix_truncated_json: true,
-        response_fixer_max_json_depth: 200,
-        response_fixer_max_fix_size: 1024,
-      })
-    ).resolves.toBeNull();
-  });
-
   it("rethrows invoke errors and logs", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValueOnce(new Error("rectifier boom"));
 
     await expect(
@@ -72,7 +50,6 @@ describe("services/settingsGatewayRectifier", () => {
   });
 
   it("treats null invoke result as error with runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(null);
 
     await expect(

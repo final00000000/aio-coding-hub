@@ -54,7 +54,6 @@ export function McpServersView({ workspaceId }: McpServersViewProps) {
     try {
       const next = await toggleMutation.mutateAsync({ serverId: server.id, enabled: nextEnabled });
       if (!next) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 
@@ -82,7 +81,6 @@ export function McpServersView({ workspaceId }: McpServersViewProps) {
     try {
       const ok = await deleteMutation.mutateAsync(target.id);
       if (!ok) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       logToConsole("info", "删除 MCP Server", { id: target.id, server_key: target.server_key });
@@ -100,7 +98,6 @@ export function McpServersView({ workspaceId }: McpServersViewProps) {
     try {
       const report = await importFromWorkspaceMutation.mutateAsync();
       if (!report) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 

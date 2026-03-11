@@ -15,7 +15,6 @@ import {
   useGatewayCircuitByProviderId,
   useGatewayCircuitResetCliMutation,
   useGatewayCircuitResetProviderMutation,
-  useGatewayCircuitStatusQuery,
   useGatewaySessionsListQuery,
   useGatewayStatusQuery,
 } from "../gateway";
@@ -34,16 +33,6 @@ vi.mock("../../services/gateway", async () => {
 });
 
 describe("query/gateway", () => {
-  it("does not call gatewayCircuitStatus without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useGatewayCircuitStatusQuery("claude"), { wrapper });
-    await Promise.resolve();
-
-    expect(gatewayCircuitStatus).not.toHaveBeenCalled();
-  });
-
   it("useGatewayCircuitByProviderId builds a provider_id -> status map", async () => {
     setTauriRuntime();
 
@@ -132,16 +121,6 @@ describe("query/gateway", () => {
     const wrapper = createQueryWrapper(client);
 
     renderHook(() => useGatewayStatusQuery({ enabled: false }), { wrapper });
-    await Promise.resolve();
-
-    expect(gatewayStatus).not.toHaveBeenCalled();
-  });
-
-  it("useGatewayStatusQuery does not call gatewayStatus without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useGatewayStatusQuery(), { wrapper });
     await Promise.resolve();
 
     expect(gatewayStatus).not.toHaveBeenCalled();

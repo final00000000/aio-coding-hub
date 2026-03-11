@@ -8,13 +8,11 @@ import { CLIS, cliLongLabel } from "../constants/clis";
 import type { CliKey } from "../services/providers";
 import { Button } from "../ui/Button";
 import { McpServersView } from "./mcp/McpServersView";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { useWorkspacesListQuery } from "../query/workspaces";
 
 export function McpPage() {
   const navigate = useNavigate();
   const [activeCli, setActiveCli] = useState<CliKey>("claude");
-  const tauriRuntime = hasTauriRuntime();
 
   const workspacesQuery = useWorkspacesListQuery(activeCli);
   const activeWorkspaceId = workspacesQuery.data?.active_id ?? null;
@@ -48,10 +46,6 @@ export function McpPage() {
       <div className="min-h-0 flex-1 overflow-y-auto scrollbar-overlay">
         {loading ? (
           <div className="text-sm text-slate-600 dark:text-slate-400">加载中…</div>
-        ) : !tauriRuntime ? (
-          <div className="text-sm text-slate-600 dark:text-slate-400">
-            仅在 Tauri Desktop 环境可用
-          </div>
         ) : !activeWorkspaceId ? (
           <div className="text-sm text-slate-600 dark:text-slate-400">
             未找到 {cliLabel} 的当前工作区（workspace）。请先在 Workspaces 页面创建并设为当前。

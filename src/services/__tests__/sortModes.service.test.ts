@@ -1,13 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { logToConsole } from "../consoleLog";
-import { sortModeActiveList, sortModeCreate, sortModeDelete, sortModesList } from "../sortModes";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { sortModeCreate, sortModeDelete, sortModesList } from "../sortModes";
+import { invokeTauriOrNull } from "../tauriInvoke";
 
 vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
   return {
     ...actual,
-    hasTauriRuntime: vi.fn(),
     invokeTauriOrNull: vi.fn(),
   };
 });
@@ -21,15 +20,7 @@ vi.mock("../consoleLog", async () => {
 });
 
 describe("services/sortModes (error semantics)", () => {
-  it("returns null without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    await expect(sortModesList()).resolves.toBeNull();
-    await expect(sortModeActiveList()).resolves.toBeNull();
-  });
-
   it("rethrows and logs on invoke failure", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValueOnce(new Error("sort modes boom"));
 
     await expect(sortModesList()).rejects.toThrow("sort modes boom");
@@ -44,14 +35,12 @@ describe("services/sortModes (error semantics)", () => {
   });
 
   it("treats null result as IPC null error with runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(null);
 
     await expect(sortModesList()).rejects.toThrow("IPC_NULL_RESULT: sort_modes_list");
   });
 
   it("keeps argument mapping unchanged", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValue({ id: 1, name: "Mode" } as any);
 
     await sortModeCreate({ name: "Mode" });

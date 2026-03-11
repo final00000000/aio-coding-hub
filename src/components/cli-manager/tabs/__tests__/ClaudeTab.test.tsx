@@ -73,7 +73,7 @@ describe("components/cli-manager/tabs/ClaudeTab", () => {
         persistClaudeSettings={vi.fn()}
       />
     );
-    expect(screen.getByText("仅在 Tauri Desktop 环境可用")).toBeInTheDocument();
+    expect(screen.getByText("数据不可用")).toBeInTheDocument();
   });
 
   it("drives key form interactions and validations", () => {

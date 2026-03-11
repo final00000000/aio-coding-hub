@@ -66,16 +66,6 @@ function makeProvider(
 }
 
 describe("query/providers", () => {
-  it("does not call providersList without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useProvidersListQuery("claude"), { wrapper });
-    await Promise.resolve();
-
-    expect(providersList).not.toHaveBeenCalled();
-  });
-
   it("calls providersList with tauri runtime", async () => {
     setTauriRuntime();
 

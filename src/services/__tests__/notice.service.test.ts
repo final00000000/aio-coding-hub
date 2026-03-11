@@ -1,13 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { logToConsole } from "../consoleLog";
 import { noticeSend } from "../notice";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { invokeTauriOrNull } from "../tauriInvoke";
 
 vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
   return {
     ...actual,
-    hasTauriRuntime: vi.fn(),
     invokeTauriOrNull: vi.fn(),
   };
 });
@@ -21,18 +20,7 @@ vi.mock("../consoleLog", async () => {
 });
 
 describe("services/notice", () => {
-  it("returns false without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    await expect(noticeSend({ level: "info", body: "x" })).resolves.toBe(false);
-
-    expect(invokeTauriOrNull).not.toHaveBeenCalled();
-    expect(logToConsole).not.toHaveBeenCalled();
-  });
-
   it("maps true/false results as before", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
-
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(true as any);
     await expect(noticeSend({ level: "info", body: "ok" })).resolves.toBe(true);
 
@@ -41,7 +29,6 @@ describe("services/notice", () => {
   });
 
   it("rethrows invoke errors and logs", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValueOnce(new Error("notice boom"));
 
     await expect(noticeSend({ level: "error", body: "x" })).rejects.toThrow("notice boom");
@@ -57,7 +44,6 @@ describe("services/notice", () => {
   });
 
   it("treats null invoke result as error with runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(null as any);
 
     await expect(noticeSend({ level: "info", body: "x" })).rejects.toThrow(

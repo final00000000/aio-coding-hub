@@ -197,9 +197,7 @@ describe("pages/providers/ProviderEditorDialog", () => {
 
     fireEvent.click(dialog.getByRole("button", { name: "保存" }));
 
-    await waitFor(() =>
-      expect(vi.mocked(toast)).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用")
-    );
+    await waitFor(() => expect(vi.mocked(providerUpsert)).toHaveBeenCalledTimes(1));
     expect(onSaved).not.toHaveBeenCalled();
     expect(onOpenChange).not.toHaveBeenCalled();
   });

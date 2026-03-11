@@ -97,7 +97,6 @@ export function SettingsSidebar({ updateMeta }: SettingsSidebarProps) {
   async function checkUpdate() {
     try {
       if (!about) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 
@@ -117,7 +116,6 @@ export function SettingsSidebar({ updateMeta }: SettingsSidebarProps) {
     try {
       const dir = await appDataDirGet();
       if (!dir) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       await openPath(dir);
@@ -138,7 +136,6 @@ export function SettingsSidebar({ updateMeta }: SettingsSidebarProps) {
     try {
       const result = await clearRequestLogsMutation.mutateAsync();
       if (!result) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 
@@ -162,7 +159,6 @@ export function SettingsSidebar({ updateMeta }: SettingsSidebarProps) {
     try {
       const ok = await appDataReset();
       if (!ok) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 
@@ -197,7 +193,6 @@ export function SettingsSidebar({ updateMeta }: SettingsSidebarProps) {
     try {
       const report = await modelPricesSyncMutation.mutateAsync({ force });
       if (!report) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 

@@ -403,7 +403,6 @@ export function ProviderEditorDialog(props: ProviderEditorDialogProps) {
       });
 
       if (!saved) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 

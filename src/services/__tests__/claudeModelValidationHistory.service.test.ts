@@ -4,13 +4,12 @@ import {
   claudeValidationHistoryList,
 } from "../claudeModelValidationHistory";
 import { logToConsole } from "../consoleLog";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { invokeTauriOrNull } from "../tauriInvoke";
 
 vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
   return {
     ...actual,
-    hasTauriRuntime: vi.fn(),
     invokeTauriOrNull: vi.fn(),
   };
 });
@@ -24,15 +23,7 @@ vi.mock("../consoleLog", async () => {
 });
 
 describe("services/claudeModelValidationHistory", () => {
-  it("returns null without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    await expect(claudeValidationHistoryList({ provider_id: 1, limit: 50 })).resolves.toBeNull();
-    await expect(claudeValidationHistoryClearProvider({ provider_id: 1 })).resolves.toBeNull();
-  });
-
   it("rethrows invoke errors and logs", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValueOnce(new Error("history boom"));
 
     await expect(claudeValidationHistoryList({ provider_id: 1, limit: 50 })).rejects.toThrow(
@@ -50,7 +41,6 @@ describe("services/claudeModelValidationHistory", () => {
   });
 
   it("treats null invoke result as error with runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(null);
 
     await expect(claudeValidationHistoryList({ provider_id: 1, limit: 50 })).rejects.toThrow(
@@ -59,7 +49,6 @@ describe("services/claudeModelValidationHistory", () => {
   });
 
   it("keeps argument mapping unchanged", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValue(true as any);
 
     await claudeValidationHistoryList({ provider_id: 1, limit: 50 });

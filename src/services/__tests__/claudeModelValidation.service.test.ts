@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { logToConsole } from "../consoleLog";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { invokeTauriOrNull } from "../tauriInvoke";
 import {
   claudeProviderGetApiKeyPlaintext,
   claudeProviderValidateModel,
@@ -10,7 +10,6 @@ vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
   return {
     ...actual,
-    hasTauriRuntime: vi.fn(),
     invokeTauriOrNull: vi.fn(),
   };
 });
@@ -24,17 +23,7 @@ vi.mock("../consoleLog", async () => {
 });
 
 describe("services/claudeModelValidation", () => {
-  it("returns null without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    await expect(
-      claudeProviderValidateModel({ provider_id: 1, base_url: "https://x", request_json: "{}" })
-    ).resolves.toBeNull();
-    await expect(claudeProviderGetApiKeyPlaintext(1)).resolves.toBeNull();
-  });
-
   it("rethrows invoke errors and logs", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValueOnce(new Error("claude validation boom"));
 
     await expect(
@@ -52,7 +41,6 @@ describe("services/claudeModelValidation", () => {
   });
 
   it("treats null invoke result as error with runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(null);
 
     await expect(
@@ -61,7 +49,6 @@ describe("services/claudeModelValidation", () => {
   });
 
   it("keeps argument mapping unchanged", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValue({ ok: true } as any);
 
     await claudeProviderValidateModel({

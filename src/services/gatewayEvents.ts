@@ -2,7 +2,6 @@ import { GatewayErrorCodes } from "../constants/gatewayErrorCodes";
 import { computeOutputTokensPerSecond as computeOutputTokensPerSecondRaw } from "../utils/formatters";
 import { logToConsole, shouldLogToConsole } from "./consoleLog";
 import { gatewayEventNames, subscribeGatewayEvent } from "./gatewayEventBus";
-import { hasTauriRuntime } from "./tauriInvoke";
 import { ingestTraceAttempt, ingestTraceRequest, ingestTraceStart } from "./traceStore";
 import { ingestCacheAnomalyRequest, ingestCacheAnomalyRequestStart } from "./cacheAnomalyMonitor";
 
@@ -147,8 +146,6 @@ function computeOutputTokensPerSecond(payload: GatewayRequestEvent) {
 }
 
 export async function listenGatewayEvents(): Promise<() => void> {
-  if (!hasTauriRuntime()) return () => {};
-
   const circuitNonTransitionDedup = new Map<string, number>();
   const CIRCUIT_NON_TRANSITION_DEDUP_WINDOW_MS = 3000;
 

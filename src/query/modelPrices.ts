@@ -8,14 +8,13 @@ import {
   type ModelPriceAliases,
   type ModelPricesSyncReport,
 } from "../services/modelPrices";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { modelPricesKeys } from "./keys";
 
 export function useModelPricesListQuery(cliKey: CliKey, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: modelPricesKeys.list(cliKey),
     queryFn: () => modelPricesList(cliKey),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -32,7 +31,7 @@ export function useModelPricesTotalCountQuery(options?: { enabled?: boolean }) {
       if (!codex || !claude || !gemini) return null;
       return codex.length + claude.length + gemini.length;
     },
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -41,7 +40,7 @@ export function useModelPriceAliasesQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: modelPricesKeys.aliases(),
     queryFn: () => modelPriceAliasesGet(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

@@ -8,14 +8,13 @@ import {
   type WslDistroConfigStatus,
   type WslConfigureReport,
 } from "../services/wsl";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { wslKeys } from "./keys";
 
 export function useWslDetectionQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: wslKeys.detection(),
     queryFn: () => wslDetect(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -24,7 +23,7 @@ export function useWslHostAddressQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: wslKeys.hostAddress(),
     queryFn: () => wslHostAddressGet(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -36,7 +35,7 @@ export function useWslConfigStatusQuery(distros: string[], options?: { enabled?:
       if (distros.length === 0) return null;
       return wslConfigStatusGet(distros);
     },
-    enabled: hasTauriRuntime() && distros.length > 0 && (options?.enabled ?? true),
+    enabled: distros.length > 0 && (options?.enabled ?? true),
     placeholderData: keepPreviousData,
   });
 }
@@ -65,7 +64,7 @@ export function useWslOverviewQuery(options?: { enabled?: boolean }) {
       ]);
       return { detection: det, hostIp: ip ?? null, statusRows: statuses ?? null };
     },
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

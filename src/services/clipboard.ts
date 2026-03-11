@@ -1,5 +1,4 @@
 import { writeText } from "@tauri-apps/plugin-clipboard-manager";
-import { hasTauriRuntime } from "./tauriInvoke";
 
 async function copyTextFallback(text: string) {
   const textarea = document.createElement("textarea");
@@ -21,13 +20,11 @@ async function copyTextFallback(text: string) {
 }
 
 export async function copyText(text: string) {
-  if (hasTauriRuntime()) {
-    try {
-      await writeText(text);
-      return;
-    } catch {
-      // fallback below
-    }
+  try {
+    await writeText(text);
+    return;
+  } catch {
+    // fallback below
   }
 
   try {

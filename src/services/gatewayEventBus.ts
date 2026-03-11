@@ -1,5 +1,4 @@
 import { logToConsole } from "./consoleLog";
-import { hasTauriRuntime } from "./tauriInvoke";
 
 export const gatewayEventNames = {
   status: "gateway:status",
@@ -89,10 +88,6 @@ export function subscribeGatewayEvent<TPayload>(
   event: GatewayEventName,
   handler: (payload: TPayload) => void
 ): GatewayEventSubscription {
-  if (!hasTauriRuntime()) {
-    return { ready: Promise.resolve(), unsubscribe: () => {} };
-  }
-
   const entry = getOrCreateEntry(event);
   const wrapped: Handler = (payload) => {
     handler(payload as TPayload);

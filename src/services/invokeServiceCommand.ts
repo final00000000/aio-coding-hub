@@ -1,6 +1,6 @@
 import { formatUnknownError } from "../utils/errors";
 import { logToConsole } from "./consoleLog";
-import { hasTauriRuntime, invokeTauriOrNull } from "./tauriInvoke";
+import { invokeTauriOrNull } from "./tauriInvoke";
 
 export type InvokeServiceCommandOptions<Fallback> = {
   title: string;
@@ -16,8 +16,6 @@ export async function invokeServiceCommand<T, Fallback = null>(
   options: InvokeServiceCommandOptions<Fallback>
 ): Promise<T | Fallback> {
   const fallback = (options.fallback ?? null) as Fallback;
-
-  if (!hasTauriRuntime()) return fallback;
 
   try {
     const result =

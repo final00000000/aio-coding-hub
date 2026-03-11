@@ -118,7 +118,7 @@ export function CliManagerGeneralTab({
 
             {rectifierAvailable === "unavailable" ? (
               <div className="text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-                仅在 Tauri Desktop 环境可用
+                数据不可用
               </div>
             ) : (
               <div className="space-y-4">
@@ -396,7 +396,7 @@ export function CliManagerGeneralTab({
 
           {rectifierAvailable === "unavailable" ? (
             <div className="text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-              仅在 Tauri Desktop 环境可用
+              数据不可用
             </div>
           ) : (
             <div className="space-y-1">
@@ -508,7 +508,7 @@ export function CliManagerGeneralTab({
 
           {rectifierAvailable === "unavailable" ? (
             <div className="text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-              仅在 Tauri Desktop 环境可用
+              数据不可用
             </div>
           ) : (
             <div className="space-y-1">

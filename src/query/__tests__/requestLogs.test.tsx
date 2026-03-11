@@ -30,16 +30,6 @@ vi.mock("../../services/requestLogs", async () => {
 });
 
 describe("query/requestLogs", () => {
-  it("does not call requestLogsListAll without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useRequestLogsListAllQuery(10), { wrapper });
-    await Promise.resolve();
-
-    expect(requestLogsListAll).not.toHaveBeenCalled();
-  });
-
   it("calls requestLogsListAll with tauri runtime", async () => {
     setTauriRuntime();
 

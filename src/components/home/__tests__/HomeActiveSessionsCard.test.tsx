@@ -37,7 +37,7 @@ describe("components/home/HomeActiveSessionsCard", () => {
         activeSessionsAvailable={false}
       />
     );
-    expect(screen.getByText("仅在 Tauri Desktop 环境可用")).toBeInTheDocument();
+    expect(screen.getByText("数据不可用")).toBeInTheDocument();
 
     render(
       <HomeActiveSessionsCard

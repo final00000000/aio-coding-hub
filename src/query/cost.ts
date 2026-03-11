@@ -18,7 +18,6 @@ import {
   type CostTrendRowV1,
 } from "../services/cost";
 import type { CliKey } from "../services/providers";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { costKeys } from "./keys";
 
 export type CostFilters = {
@@ -66,7 +65,7 @@ export function useCostAnalyticsV1Query(
         topRequests: top,
       } satisfies CostAnalyticsV1;
     },
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

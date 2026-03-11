@@ -10,7 +10,6 @@ import { Button } from "../ui/Button";
 import { PageHeader } from "../ui/PageHeader";
 import { TabList } from "../ui/TabList";
 import { SkillsView } from "./skills/SkillsView";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { useWorkspacesListQuery } from "../query/workspaces";
 
 function readCliFromStorage(): CliKey {
@@ -31,8 +30,6 @@ export function SkillsPage() {
   const navigate = useNavigate();
   const [activeCli, setActiveCli] = useState<CliKey>(() => readCliFromStorage());
   const currentCli = useMemo(() => cliFromKeyOrDefault(activeCli), [activeCli]);
-
-  const tauriRuntime = hasTauriRuntime();
 
   const workspacesQuery = useWorkspacesListQuery(activeCli);
   const activeWorkspaceId = workspacesQuery.data?.active_id ?? null;
@@ -84,10 +81,6 @@ export function SkillsPage() {
       <div className="min-h-0 flex-1 lg:overflow-hidden">
         {loading ? (
           <div className="text-sm text-slate-600 dark:text-slate-400">加载中…</div>
-        ) : !tauriRuntime ? (
-          <div className="text-sm text-slate-600 dark:text-slate-400">
-            仅在 Tauri Desktop 环境可用
-          </div>
         ) : !activeWorkspaceId ? (
           <div className="text-sm text-slate-600 dark:text-slate-400">
             未找到 {currentCli.name} 的当前工作区（workspace）。请先在 Workspaces

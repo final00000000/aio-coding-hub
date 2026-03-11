@@ -7,7 +7,6 @@ import { HomeRequestLogsPanel } from "../components/home/HomeRequestLogsPanel";
 import { RequestLogDetailDialog } from "../components/home/RequestLogDetailDialog";
 import { CLI_FILTER_ITEMS, type CliFilterKey } from "../constants/clis";
 import { GatewayErrorCodes } from "../constants/gatewayErrorCodes";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { useDocumentVisibility } from "../hooks/useDocumentVisibility";
 import { Card } from "../ui/Card";
 import { Input } from "../ui/Input";
@@ -59,8 +58,7 @@ function buildStatusPredicate(query: string): StatusPredicate | null {
 }
 
 export function LogsPage() {
-  const tauriRuntime = hasTauriRuntime();
-  const showCustomTooltip = tauriRuntime;
+  const showCustomTooltip = true;
   const foregroundActive = useDocumentVisibility();
 
   const [cliKey, setCliKey] = useState<CliFilterKey>("all");
@@ -78,7 +76,7 @@ export function LogsPage() {
   });
 
   useWindowForeground({
-    enabled: tauriRuntime,
+    enabled: true,
     throttleMs: 1000,
     onForeground: () => {
       if (autoRefresh) {
@@ -91,11 +89,9 @@ export function LogsPage() {
   const requestLogsLoading = requestLogsQuery.isLoading;
   const requestLogsRefreshing =
     (requestLogsQuery.isFetching && !requestLogsQuery.isLoading) || incrementalPollQuery.isFetching;
-  const requestLogsAvailable: boolean | null = !tauriRuntime
-    ? false
-    : requestLogsQuery.isLoading
-      ? null
-      : requestLogsQuery.data != null;
+  const requestLogsAvailable: boolean | null = requestLogsQuery.isLoading
+    ? null
+    : requestLogsQuery.data != null;
 
   const statusPredicate = useMemo(() => buildStatusPredicate(statusFilter), [statusFilter]);
   const statusFilterValid = statusFilter.trim().length === 0 || statusPredicate != null;

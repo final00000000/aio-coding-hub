@@ -1,6 +1,6 @@
 // Usage: Rendered by ProvidersPage when `view === "providers"`.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -215,69 +215,69 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
     };
   }, [circuitByProviderId, circuitQuery, hasUnavailableCircuit]);
 
-  async function toggleProviderEnabled(provider: ProviderSummary) {
-    try {
-      const next = await providerSetEnabledMutation.mutateAsync({
-        providerId: provider.id,
-        enabled: !provider.enabled,
-      });
-      if (!next) {
-        toast("仅在 Tauri Desktop 环境可用");
-        return;
+  const toggleProviderEnabled = useCallback(
+    async (provider: ProviderSummary) => {
+      try {
+        const next = await providerSetEnabledMutation.mutateAsync({
+          providerId: provider.id,
+          enabled: !provider.enabled,
+        });
+        if (!next) return;
+
+        logToConsole("info", "更新 Provider 状态", { id: next.id, enabled: next.enabled });
+        toast(next.enabled ? "已启用 Provider" : "已禁用 Provider");
+      } catch (err) {
+        logToConsole("error", "更新 Provider 状态失败", { error: String(err), id: provider.id });
+        toast(`更新失败：${String(err)}`);
       }
+    },
+    [providerSetEnabledMutation]
+  );
 
-      logToConsole("info", "更新 Provider 状态", { id: next.id, enabled: next.enabled });
-      toast(next.enabled ? "已启用 Provider" : "已禁用 Provider");
-    } catch (err) {
-      logToConsole("error", "更新 Provider 状态失败", { error: String(err), id: provider.id });
-      toast(`更新失败：${String(err)}`);
-    }
-  }
+  const resetCircuit = useCallback(
+    async (provider: ProviderSummary) => {
+      if (circuitResetting[provider.id]) return;
+      setCircuitResetting((cur) => ({ ...cur, [provider.id]: true }));
 
-  async function resetCircuit(provider: ProviderSummary) {
-    if (circuitResetting[provider.id]) return;
-    setCircuitResetting((cur) => ({ ...cur, [provider.id]: true }));
+      try {
+        await resetCircuitProviderMutation.mutateAsync({
+          cliKey: provider.cli_key,
+          providerId: provider.id,
+        });
 
-    try {
-      const ok = await resetCircuitProviderMutation.mutateAsync({
-        cliKey: provider.cli_key,
-        providerId: provider.id,
-      });
-      if (!ok) {
-        toast("仅在 Tauri Desktop 环境可用");
-        return;
+        toast("已解除熔断");
+        void circuitQuery.refetch();
+      } catch (err) {
+        logToConsole("error", "解除熔断失败", { provider_id: provider.id, error: String(err) });
+        toast(`解除熔断失败：${String(err)}`);
+      } finally {
+        setCircuitResetting((cur) => ({ ...cur, [provider.id]: false }));
       }
+    },
+    [circuitResetting, resetCircuitProviderMutation, circuitQuery]
+  );
 
-      toast("已解除熔断");
-      void circuitQuery.refetch();
-    } catch (err) {
-      logToConsole("error", "解除熔断失败", { provider_id: provider.id, error: String(err) });
-      toast(`解除熔断失败：${String(err)}`);
-    } finally {
-      setCircuitResetting((cur) => ({ ...cur, [provider.id]: false }));
-    }
-  }
+  const resetCircuitAll = useCallback(
+    async (cliKey: CliKey) => {
+      if (circuitResettingAll) return;
+      setCircuitResettingAll(true);
 
-  async function resetCircuitAll(cliKey: CliKey) {
-    if (circuitResettingAll) return;
-    setCircuitResettingAll(true);
+      try {
+        const count = await resetCircuitCliMutation.mutateAsync({ cliKey });
 
-    try {
-      const count = await resetCircuitCliMutation.mutateAsync({ cliKey });
-      if (count == null) {
-        toast("仅在 Tauri Desktop 环境可用");
-        return;
+        toast(
+          count != null && count > 0 ? `已解除 ${count} 个 Provider 的熔断` : "无 Provider 需要处理"
+        );
+        void circuitQuery.refetch();
+      } catch (err) {
+        logToConsole("error", "解除熔断（全部）失败", { cli: cliKey, error: String(err) });
+        toast(`解除熔���失败：${String(err)}`);
+      } finally {
+        setCircuitResettingAll(false);
       }
-
-      toast(count > 0 ? `已解除 ${count} 个 Provider 的熔断` : "无 Provider 需要处理");
-      void circuitQuery.refetch();
-    } catch (err) {
-      logToConsole("error", "解除熔断（全部）失败", { cli: cliKey, error: String(err) });
-      toast(`解除熔断失败：${String(err)}`);
-    } finally {
-      setCircuitResettingAll(false);
-    }
-  }
+    },
+    [circuitResettingAll, resetCircuitCliMutation, circuitQuery]
+  );
 
   function requestValidateProviderModel(provider: ProviderSummary) {
     if (activeCliRef.current !== "claude") return;
@@ -285,18 +285,14 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
     setValidateDialogOpen(true);
   }
 
-  async function confirmRemoveProvider() {
+  const confirmRemoveProvider = useCallback(async () => {
     if (!deleteTarget || deleting) return;
     setDeleting(true);
     try {
-      const ok = await providerDeleteMutation.mutateAsync({
+      await providerDeleteMutation.mutateAsync({
         cliKey: deleteTarget.cli_key,
         providerId: deleteTarget.id,
       });
-      if (!ok) {
-        toast("仅在 Tauri Desktop 环境可用");
-        return;
-      }
 
       logToConsole("info", "删除 Provider", {
         id: deleteTarget.id,
@@ -313,7 +309,7 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
     } finally {
       setDeleting(false);
     }
-  }
+  }, [deleteTarget, deleting, providerDeleteMutation]);
 
   function terminalLaunchCopiedToastMessage(command: string) {
     const normalized = command.trim().toLowerCase();
@@ -327,75 +323,84 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
     return "已复制, 请在目标文件夹终端粘贴执行";
   }
 
-  async function copyTerminalLaunchCommand(provider: ProviderSummary) {
-    if (provider.cli_key !== "claude") return;
-    if (terminalCopyingByProviderId[provider.id]) return;
+  const copyTerminalLaunchCommand = useCallback(
+    async (provider: ProviderSummary) => {
+      if (provider.cli_key !== "claude") return;
+      if (terminalCopyingByProviderId[provider.id]) return;
 
-    setTerminalCopyingByProviderId((cur) => ({ ...cur, [provider.id]: true }));
+      setTerminalCopyingByProviderId((cur) => ({ ...cur, [provider.id]: true }));
 
-    let launchCommand: string | null = null;
-    try {
-      launchCommand = await terminalLaunchCommandMutation.mutateAsync({ providerId: provider.id });
-      if (!launchCommand) {
-        toast("仅在 Tauri Desktop 环境可用");
-        return;
-      }
-    } catch (err) {
-      logToConsole("error", "生成 Claude 终端启动命令失败", {
-        provider_id: provider.id,
-        error: String(err),
-      });
-      toast(`生成启动命令失败：${String(err)}`);
-      return;
-    }
-
-    try {
-      await copyText(launchCommand);
-      toast(terminalLaunchCopiedToastMessage(launchCommand));
-      logToConsole("info", "复制 Claude 终端启动命令", {
-        provider_id: provider.id,
-      });
-    } catch (err) {
-      logToConsole("error", "复制 Claude 终端启动命令失败", {
-        provider_id: provider.id,
-        error: String(err),
-      });
-      toast("复制失败：当前环境不支持剪贴板");
-    } finally {
-      setTerminalCopyingByProviderId((cur) => ({ ...cur, [provider.id]: false }));
-    }
-  }
-
-  async function duplicateProvider(provider: ProviderSummary) {
-    if (duplicatingByProviderId[provider.id]) return;
-    setDuplicatingByProviderId((cur) => ({ ...cur, [provider.id]: true }));
-
-    try {
-      const apiKey = provider.auth_mode === "api_key" ? await providerGetApiKey(provider.id) : null;
-      if (provider.auth_mode === "api_key" && (!apiKey || !apiKey.trim())) {
-        toast("复制失败：原 Provider 未保存 API Key");
+      let launchCommand: string | null = null;
+      try {
+        launchCommand = await terminalLaunchCommandMutation.mutateAsync({
+          providerId: provider.id,
+        });
+        if (!launchCommand) {
+          toast("生成启动命令失败");
+          return;
+        }
+      } catch (err) {
+        logToConsole("error", "生成 Claude 终端启动命令失败", {
+          provider_id: provider.id,
+          error: String(err),
+        });
+        toast(`生成启动命令失败：${String(err)}`);
         return;
       }
 
-      openCreateDialog(
-        provider.cli_key,
-        buildDuplicatedProviderInitialValues(provider, providersRef.current, apiKey)
-      );
-      logToConsole("info", "复制 Provider 配置", {
-        provider_id: provider.id,
-        cli_key: provider.cli_key,
-      });
-    } catch (err) {
-      logToConsole("error", "复制 Provider 配置失败", {
-        provider_id: provider.id,
-        cli_key: provider.cli_key,
-        error: String(err),
-      });
-      toast(`复制失败：${String(err)}`);
-    } finally {
-      setDuplicatingByProviderId((cur) => ({ ...cur, [provider.id]: false }));
-    }
-  }
+      try {
+        await copyText(launchCommand);
+        toast(terminalLaunchCopiedToastMessage(launchCommand));
+        logToConsole("info", "复制 Claude 终端启动命令", {
+          provider_id: provider.id,
+        });
+      } catch (err) {
+        logToConsole("error", "复制 Claude 终端启动命令失败", {
+          provider_id: provider.id,
+          error: String(err),
+        });
+        toast("复制失败：当前环境不支持剪贴板");
+      } finally {
+        setTerminalCopyingByProviderId((cur) => ({ ...cur, [provider.id]: false }));
+      }
+    },
+    [terminalCopyingByProviderId, terminalLaunchCommandMutation]
+  );
+
+  const duplicateProvider = useCallback(
+    async (provider: ProviderSummary) => {
+      if (duplicatingByProviderId[provider.id]) return;
+      setDuplicatingByProviderId((cur) => ({ ...cur, [provider.id]: true }));
+
+      try {
+        const apiKey =
+          provider.auth_mode === "api_key" ? await providerGetApiKey(provider.id) : null;
+        if (provider.auth_mode === "api_key" && (!apiKey || !apiKey.trim())) {
+          toast("复制失败：原 Provider 未保存 API Key");
+          return;
+        }
+
+        openCreateDialog(
+          provider.cli_key,
+          buildDuplicatedProviderInitialValues(provider, providersRef.current, apiKey)
+        );
+        logToConsole("info", "复制 Provider 配置", {
+          provider_id: provider.id,
+          cli_key: provider.cli_key,
+        });
+      } catch (err) {
+        logToConsole("error", "复制 Provider 配置失败", {
+          provider_id: provider.id,
+          cli_key: provider.cli_key,
+          error: String(err),
+        });
+        toast(`复制失败：${String(err)}`);
+      } finally {
+        setDuplicatingByProviderId((cur) => ({ ...cur, [provider.id]: false }));
+      }
+    },
+    [duplicatingByProviderId]
+  );
 
   async function persistProvidersOrder(
     cliKey: CliKey,
@@ -407,13 +412,7 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
         cliKey,
         orderedProviderIds: nextProviders.map((p) => p.id),
       });
-      if (!saved) {
-        toast("仅在 Tauri Desktop 环境可用");
-        if (activeCliRef.current === cliKey) {
-          queryClient.setQueryData(providersKeys.list(cliKey), prevProviders);
-        }
-        return;
-      }
+      if (!saved) return;
 
       if (activeCliRef.current !== cliKey) {
         return;

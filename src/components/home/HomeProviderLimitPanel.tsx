@@ -249,9 +249,7 @@ export function HomeProviderLimitPanelContent({
   }
 
   if (available === false) {
-    return (
-      <div className="text-sm text-slate-600 dark:text-slate-400">仅在 Tauri Desktop 环境可用</div>
-    );
+    return <div className="text-sm text-slate-600 dark:text-slate-400">数据不可用</div>;
   }
 
   if (rows.length === 0) {
@@ -312,9 +310,7 @@ export function HomeProviderLimitPanel({
           加载中...
         </div>
       ) : available === false ? (
-        <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-          仅在 Tauri Desktop 环境可用
-        </div>
+        <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">数据不可用</div>
       ) : rows.length === 0 ? (
         <div className="mt-2">
           <EmptyState title="暂无配置限额的供应商" description="请在供应商编辑界面配置限额。" />

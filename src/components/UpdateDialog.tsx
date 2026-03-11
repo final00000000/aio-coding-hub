@@ -42,10 +42,6 @@ export function UpdateDialog() {
     }
 
     const ok = await updateDownloadAndInstall();
-    if (ok == null) {
-      toast("仅在 Tauri Desktop 环境可用");
-      return;
-    }
     if (ok === false) return;
 
     updateDialogSetOpen(false);

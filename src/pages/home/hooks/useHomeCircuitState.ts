@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { logToConsole } from "../../../services/consoleLog";
-import { hasTauriRuntime } from "../../../services/tauriInvoke";
 import type { OpenCircuitRow } from "../../../components/ProviderCircuitBadge";
 import { gatewayKeys } from "../../../query/keys";
 import {
@@ -22,10 +21,11 @@ export type HomeCircuitState = {
 };
 
 export function useHomeCircuitState(): HomeCircuitState {
-  const tauriRuntime = hasTauriRuntime();
   const queryClient = useQueryClient();
 
   const [resettingProviderIds, setResettingProviderIds] = useState<Set<number>>(new Set());
+  const resettingProviderIdsRef = useRef(resettingProviderIds);
+  resettingProviderIdsRef.current = resettingProviderIds;
   const openCircuitsAutoRefreshTimerRef = useRef<number | null>(null);
 
   const resetCircuitProviderMutation = useGatewayCircuitResetProviderMutation();
@@ -37,8 +37,6 @@ export function useHomeCircuitState(): HomeCircuitState {
   const geminiProvidersQuery = useProvidersListQuery("gemini");
 
   const openCircuits = useMemo<OpenCircuitRow[]>(() => {
-    if (!tauriRuntime) return [];
-
     const specs = [
       {
         cliKey: "claude" as const,
@@ -117,12 +115,11 @@ export function useHomeCircuitState(): HomeCircuitState {
     codexProvidersQuery.data,
     geminiCircuitsQuery.data,
     geminiProvidersQuery.data,
-    tauriRuntime,
   ]);
 
   const handleResetProvider = useCallback(
     async (providerId: number) => {
-      if (resettingProviderIds.has(providerId)) return;
+      if (resettingProviderIdsRef.current.has(providerId)) return;
 
       setResettingProviderIds((prev) => new Set(prev).add(providerId));
       try {
@@ -143,7 +140,7 @@ export function useHomeCircuitState(): HomeCircuitState {
         });
       }
     },
-    [resetCircuitProviderMutation, resettingProviderIds]
+    [resetCircuitProviderMutation]
   );
 
   // Auto-refresh circuits when the earliest open_until expires
@@ -153,7 +150,6 @@ export function useHomeCircuitState(): HomeCircuitState {
       openCircuitsAutoRefreshTimerRef.current = null;
     }
 
-    if (!tauriRuntime) return;
     if (openCircuits.length === 0) return;
 
     const nowUnix = Math.floor(Date.now() / 1000);
@@ -178,7 +174,7 @@ export function useHomeCircuitState(): HomeCircuitState {
         openCircuitsAutoRefreshTimerRef.current = null;
       }
     };
-  }, [openCircuits, queryClient, tauriRuntime]);
+  }, [openCircuits, queryClient]);
 
   return {
     openCircuits,

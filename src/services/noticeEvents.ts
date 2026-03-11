@@ -8,7 +8,6 @@
 
 import { logToConsole } from "./consoleLog";
 import type { NoticeLevel } from "./notice";
-import { hasTauriRuntime } from "./tauriInvoke";
 
 export type NoticeEventPayload = {
   level: NoticeLevel;
@@ -17,8 +16,6 @@ export type NoticeEventPayload = {
 };
 
 export async function listenNoticeEvents(): Promise<() => void> {
-  if (!hasTauriRuntime()) return () => {};
-
   const [{ listen }, { isPermissionGranted, sendNotification }] = await Promise.all([
     import("@tauri-apps/api/event"),
     import("@tauri-apps/plugin-notification"),

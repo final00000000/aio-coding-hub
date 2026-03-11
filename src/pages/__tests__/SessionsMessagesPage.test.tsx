@@ -3,7 +3,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestQueryClient } from "../../test/utils/reactQuery";
-import { setTauriRuntime, clearTauriRuntime } from "../../test/utils/tauriRuntime";
+import { setTauriRuntime } from "../../test/utils/tauriRuntime";
 
 vi.mock("../../services/clipboard", () => ({ copyText: vi.fn().mockResolvedValue(undefined) }));
 
@@ -119,13 +119,8 @@ function renderWithRoute(route: string, state?: { session: CliSessionsSessionSum
 
 describe("pages/SessionsMessagesPage", () => {
   beforeEach(() => {
-    clearTauriRuntime();
+    setTauriRuntime();
     vi.mocked(cliSessionsMessagesGet).mockReset();
-  });
-
-  it("renders empty state when no Tauri runtime", () => {
-    renderWithRoute("/sessions/claude/proj1/session/file.json");
-    expect(screen.getByText("该功能仅在桌面端可用")).toBeInTheDocument();
   });
 
   it("renders error state for invalid source", () => {

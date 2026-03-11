@@ -1,26 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import { tauriInvoke } from "../../test/mocks/tauri";
-import { clearTauriRuntime, setTauriRuntime } from "../../test/utils/tauriRuntime";
 import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
 
 describe("services/tauriInvoke", () => {
-  it("hasTauriRuntime reflects __TAURI_INTERNALS__", () => {
-    clearTauriRuntime();
-    expect(hasTauriRuntime()).toBe(false);
-
-    setTauriRuntime();
+  it("hasTauriRuntime always returns true", () => {
     expect(hasTauriRuntime()).toBe(true);
   });
 
-  it("invokeTauriOrNull returns null without runtime", async () => {
-    clearTauriRuntime();
-    vi.mocked(tauriInvoke).mockResolvedValueOnce("ok");
-    await expect(invokeTauriOrNull("x")).resolves.toBeNull();
-    expect(tauriInvoke).not.toHaveBeenCalled();
-  });
-
   it("invokeTauriOrNull calls @tauri-apps/api/core.invoke with runtime", async () => {
-    setTauriRuntime();
     vi.mocked(tauriInvoke).mockResolvedValueOnce({ ok: true });
 
     await expect(invokeTauriOrNull("cmd", { a: 1 })).resolves.toEqual({ ok: true });
@@ -30,8 +17,6 @@ describe("services/tauriInvoke", () => {
   it("invokeTauriOrNull rejects on default timeout", async () => {
     vi.useFakeTimers();
     try {
-      setTauriRuntime();
-
       vi.mocked(tauriInvoke).mockImplementationOnce(() => new Promise(() => {}));
 
       const pending = invokeTauriOrNull("cmd-timeout");
@@ -49,8 +34,6 @@ describe("services/tauriInvoke", () => {
   it("invokeTauriOrNull supports custom timeoutMs", async () => {
     vi.useFakeTimers();
     try {
-      setTauriRuntime();
-
       vi.mocked(tauriInvoke).mockImplementationOnce(() => new Promise(() => {}));
 
       const pending = invokeTauriOrNull("cmd-custom-timeout", undefined, { timeoutMs: 25 });
@@ -68,8 +51,6 @@ describe("services/tauriInvoke", () => {
   it("invokeTauriOrNull disables timeout when timeoutMs <= 0", async () => {
     vi.useFakeTimers();
     try {
-      setTauriRuntime();
-
       vi.mocked(tauriInvoke).mockImplementationOnce(
         () =>
           new Promise((resolve) => {

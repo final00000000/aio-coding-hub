@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { PromptsPage } from "../PromptsPage";
 import { createTestQueryClient } from "../../test/utils/reactQuery";
-import { clearTauriRuntime, setTauriRuntime } from "../../test/utils/tauriRuntime";
+import { setTauriRuntime } from "../../test/utils/tauriRuntime";
 import { logToConsole } from "../../services/consoleLog";
 import { useWorkspacesListQuery } from "../../query/workspaces";
 
@@ -46,19 +46,6 @@ function renderWithProviders(element: ReactElement) {
 }
 
 describe("pages/PromptsPage", () => {
-  it("shows tauri runtime hint when not running in desktop runtime", () => {
-    clearTauriRuntime();
-
-    vi.mocked(useWorkspacesListQuery).mockReturnValue({
-      data: null,
-      isFetching: false,
-      error: null,
-    } as any);
-
-    renderWithProviders(<PromptsPage />);
-    expect(screen.getByText("仅在 Tauri Desktop 环境可用")).toBeInTheDocument();
-  });
-
   it("shows missing workspace hint when active workspace is null", () => {
     setTauriRuntime();
 

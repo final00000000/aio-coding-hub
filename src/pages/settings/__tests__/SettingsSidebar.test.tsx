@@ -187,7 +187,6 @@ describe("pages/settings/SettingsSidebar", () => {
     const { rerender } = renderWithProviders(<SettingsSidebar updateMeta={createUpdateMeta()} />);
 
     fireEvent.click(screen.getByRole("button", { name: "check-update" }));
-    expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用");
 
     vi.mocked(tauriOpenUrl).mockResolvedValueOnce(undefined as any);
     rerender(
@@ -270,12 +269,11 @@ describe("pages/settings/SettingsSidebar", () => {
       </QueryClientProvider>
     );
 
-    // open app data dir: null -> toast, then openPath error branch
+    // open app data dir: null -> no-op, then openPath error branch
     fireEvent.click(screen.getByRole("button", { name: "open-data-dir" }));
     await act(async () => {
       await Promise.resolve();
     });
-    expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用");
 
     fireEvent.click(screen.getByRole("button", { name: "open-data-dir" }));
     await act(async () => {
@@ -298,7 +296,6 @@ describe("pages/settings/SettingsSidebar", () => {
       await Promise.resolve();
     });
     expect(clearMutation.mutateAsync).toHaveBeenCalledTimes(1);
-    expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用");
 
     fireEvent.click(screen.getByRole("button", { name: "confirm-clear-logs" }));
     await act(async () => {
@@ -325,7 +322,6 @@ describe("pages/settings/SettingsSidebar", () => {
       await Promise.resolve();
     });
     expect(appDataReset).toHaveBeenCalledTimes(1);
-    expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用");
 
     fireEvent.click(screen.getByRole("button", { name: "confirm-reset-all" }));
     await act(async () => {
@@ -352,7 +348,6 @@ describe("pages/settings/SettingsSidebar", () => {
       await Promise.resolve();
     });
     expect(syncMutation.mutateAsync).toHaveBeenCalledWith({ force: false });
-    expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用");
 
     fireEvent.click(screen.getByRole("button", { name: "sync-model-prices" }));
     await act(async () => {

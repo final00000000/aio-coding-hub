@@ -10,7 +10,6 @@ import {
   type UsageRange,
   type UsageScope,
 } from "../services/usage";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { usageKeys } from "./keys";
 
 export function useUsageSummaryQuery(
@@ -21,7 +20,7 @@ export function useUsageSummaryQuery(
   return useQuery({
     queryKey: usageKeys.summary(range, input),
     queryFn: () => usageSummary(range, input),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
     refetchInterval: options?.refetchIntervalMs ?? false,
   });
@@ -34,7 +33,7 @@ export function useUsageHourlySeriesQuery(
   return useQuery({
     queryKey: usageKeys.hourlySeries(days),
     queryFn: () => usageHourlySeries(days),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
     refetchInterval: options?.refetchIntervalMs ?? false,
   });
@@ -48,7 +47,7 @@ export function useUsageSummaryV2Query(
   return useQuery({
     queryKey: usageKeys.summaryV2(period, input),
     queryFn: () => usageSummaryV2(period, input),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -62,7 +61,7 @@ export function useUsageLeaderboardV2Query(
   return useQuery({
     queryKey: usageKeys.leaderboardV2(scope, period, input),
     queryFn: () => usageLeaderboardV2(scope, period, input),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -80,7 +79,7 @@ export function useUsageProviderCacheRateTrendV1Query(
   return useQuery({
     queryKey: usageKeys.providerCacheRateTrendV1(period, input),
     queryFn: () => usageProviderCacheRateTrendV1(period, input),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

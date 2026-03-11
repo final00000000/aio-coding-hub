@@ -8,7 +8,6 @@ import { cliShortLabel } from "../../constants/clis";
 import { useCustomDateRange } from "../../hooks/useCustomDateRange";
 import { useTheme } from "../../hooks/useTheme";
 import { useCostAnalyticsV1Query } from "../../query/cost";
-import { hasTauriRuntime } from "../../services/tauriInvoke";
 import type { CliKey } from "../../services/providers";
 import type { CostPeriod, CostScatterCliProviderModelRowV1 } from "../../services/cost";
 import { buildRecentDayKeys, dayKeyFromLocalDate } from "../../utils/dateKeys";
@@ -115,21 +114,18 @@ export function useCostFilters() {
     };
   }, [bounds, cliKey, model, providerId]);
 
-  const tauriRuntime = hasTauriRuntime();
-  const queryEnabled = tauriRuntime && (period !== "custom" || Boolean(customApplied));
+  const queryEnabled = period !== "custom" || Boolean(customApplied);
 
   const costQuery = useCostAnalyticsV1Query(period, filters, { enabled: queryEnabled });
   const loading = costQuery.isLoading;
   const fetching = costQuery.isFetching;
   const errorText = costQuery.error ? String(costQuery.error) : null;
 
-  const tauriAvailable: boolean | null = !tauriRuntime
-    ? false
-    : !queryEnabled
+  const tauriAvailable: boolean | null = !queryEnabled
+    ? null
+    : loading
       ? null
-      : loading
-        ? null
-        : costQuery.data != null;
+      : costQuery.data != null;
 
   const summary = costQuery.data?.summary ?? null;
   const trendRows = useMemo(() => costQuery.data?.trend ?? [], [costQuery.data?.trend]);

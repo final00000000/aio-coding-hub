@@ -1,39 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { tauriInvoke } from "../../test/mocks/tauri";
-import { clearTauriRuntime, setTauriRuntime } from "../../test/utils/tauriRuntime";
+import { setTauriRuntime } from "../../test/utils/tauriRuntime";
 
 describe("services/settings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it("returns null when tauri runtime is missing", async () => {
-    clearTauriRuntime();
-    vi.resetModules();
-
-    const { settingsGet, settingsSet } = await import("../settings");
-
-    expect(await settingsGet()).toBeNull();
-    expect(
-      await settingsSet({
-        preferredPort: 37123,
-        autoStart: false,
-        trayEnabled: true,
-        logRetentionDays: 30,
-        providerCooldownSeconds: 30,
-        providerBaseUrlPingCacheTtlSeconds: 60,
-        upstreamFirstByteTimeoutSeconds: 0,
-        upstreamStreamIdleTimeoutSeconds: 0,
-        upstreamRequestTimeoutNonStreamingSeconds: 0,
-        enableCacheAnomalyMonitor: false,
-        failoverMaxAttemptsPerProvider: 5,
-        failoverMaxProvidersToTry: 5,
-        circuitBreakerFailureThreshold: 5,
-        circuitBreakerOpenDurationMinutes: 30,
-      })
-    ).toBeNull();
-
-    expect(tauriInvoke).not.toHaveBeenCalled();
   });
 
   it("passes update as a single named parameter", async () => {

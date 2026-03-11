@@ -37,7 +37,7 @@ describe("components/home/HomeProviderLimitPanel", () => {
     expect(screen.getByText("加载中...")).toBeInTheDocument();
 
     rerender(<HomeProviderLimitPanelContent rows={[]} loading={false} available={false} />);
-    expect(screen.getByText("仅在 Tauri Desktop 环境可用")).toBeInTheDocument();
+    expect(screen.getByText("数据不可用")).toBeInTheDocument();
 
     rerender(<HomeProviderLimitPanelContent rows={[]} loading={false} available={true} />);
     expect(screen.getByText("暂无配置限额的供应商")).toBeInTheDocument();

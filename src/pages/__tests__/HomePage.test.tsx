@@ -6,7 +6,7 @@ import type { ReactElement } from "react";
 import { toast } from "sonner";
 import { setEnvConflictsState } from "../../test/msw/state";
 import { createTestQueryClient } from "../../test/utils/reactQuery";
-import { clearTauriRuntime, setTauriRuntime } from "../../test/utils/tauriRuntime";
+import { setTauriRuntime } from "../../test/utils/tauriRuntime";
 import { tauriInvoke } from "../../test/mocks/tauri";
 import { HomePage } from "../HomePage";
 import { logToConsole } from "../../services/consoleLog";
@@ -387,8 +387,6 @@ describe("pages/HomePage", () => {
     fireEvent.click(dialog.getByRole("button", { name: "确认切换" }));
     await Promise.resolve();
     expect(activeSetMutation.mutateAsync).toHaveBeenCalledWith({ cliKey: "claude", modeId: 2 });
-    expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用");
-
     // switch back to overview triggers refetch when returning
     fireEvent.click(screen.getByRole("tab", { name: "花费" }));
     expect(screen.getByText("cost-panel")).toBeInTheDocument();
@@ -455,8 +453,8 @@ describe("pages/HomePage", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("covers non-tauri runtime branches and the 'more' tab", () => {
-    clearTauriRuntime();
+  it("covers null-data branches and the 'more' tab", () => {
+    setTauriRuntime();
 
     const client = createTestQueryClient();
     vi.mocked(useGatewayCircuitResetProviderMutation).mockReturnValue({

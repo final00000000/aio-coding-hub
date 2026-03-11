@@ -46,27 +46,6 @@ vi.mock("../../services/cliManager", async () => {
 });
 
 describe("query/cliManager", () => {
-  it("does not call cliManager queries without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useCliManagerClaudeInfoQuery(), { wrapper });
-    renderHook(() => useCliManagerClaudeSettingsQuery(), { wrapper });
-    renderHook(() => useCliManagerCodexInfoQuery(), { wrapper });
-    renderHook(() => useCliManagerCodexConfigQuery(), { wrapper });
-    renderHook(() => useCliManagerCodexConfigTomlQuery(), { wrapper });
-    renderHook(() => useCliManagerGeminiInfoQuery(), { wrapper });
-
-    await Promise.resolve();
-
-    expect(cliManagerClaudeInfoGet).not.toHaveBeenCalled();
-    expect(cliManagerClaudeSettingsGet).not.toHaveBeenCalled();
-    expect(cliManagerCodexInfoGet).not.toHaveBeenCalled();
-    expect(cliManagerCodexConfigGet).not.toHaveBeenCalled();
-    expect(cliManagerCodexConfigTomlGet).not.toHaveBeenCalled();
-    expect(cliManagerGeminiInfoGet).not.toHaveBeenCalled();
-  });
-
   it("calls cliManager queries with tauri runtime", async () => {
     setTauriRuntime();
 

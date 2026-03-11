@@ -13,7 +13,6 @@ import {
   useSortModeActiveSetMutation,
   useSortModesListQuery,
 } from "../../../query/sortModes";
-import { hasTauriRuntime } from "../../../services/tauriInvoke";
 
 export type PendingSortModeSwitch = {
   cliKey: CliKey;
@@ -34,8 +33,6 @@ export type HomeSortModeState = {
 };
 
 export function useHomeSortMode(activeSessions: GatewayActiveSession[]): HomeSortModeState {
-  const tauriRuntime = hasTauriRuntime();
-
   const [switchingCliKey, setSwitchingCliKey] = useState<CliKey | null>(null);
   const [pendingSortModeSwitch, setPendingSortModeSwitch] = useState<PendingSortModeSwitch | null>(
     null
@@ -47,11 +44,9 @@ export function useHomeSortMode(activeSessions: GatewayActiveSession[]): HomeSor
 
   const sortModes = useMemo(() => sortModesQuery.data ?? [], [sortModesQuery.data]);
   const sortModesLoading = sortModesQuery.isLoading || sortModeActiveQuery.isLoading;
-  const sortModesAvailable: boolean | null = !tauriRuntime
-    ? false
-    : sortModesLoading
-      ? null
-      : sortModesQuery.data != null && sortModeActiveQuery.data != null;
+  const sortModesAvailable: boolean | null = sortModesLoading
+    ? null
+    : sortModesQuery.data != null && sortModeActiveQuery.data != null;
 
   const activeModeByCli = useMemo<Record<CliKey, number | null>>(() => {
     const next: Record<CliKey, number | null> = {
@@ -85,7 +80,6 @@ export function useHomeSortMode(activeSessions: GatewayActiveSession[]): HomeSor
       try {
         const res = await sortModeActiveSetMutation.mutateAsync({ cliKey, modeId });
         if (!res) {
-          toast("仅在 Tauri Desktop 环境可用");
           return;
         }
 

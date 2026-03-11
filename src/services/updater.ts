@@ -1,5 +1,4 @@
 import { invokeServiceCommand } from "./invokeServiceCommand";
-import { hasTauriRuntime } from "./tauriInvoke";
 
 export type UpdaterCheckUpdate = {
   rid: number;
@@ -78,8 +77,6 @@ export async function updaterDownloadAndInstall(options: {
   onEvent?: (event: UpdaterDownloadEvent) => void;
   timeoutMs?: number;
 }): Promise<boolean | null> {
-  if (!hasTauriRuntime()) return null;
-
   const { invoke, Channel } = await import("@tauri-apps/api/core");
   const onEvent = typeof options.onEvent === "function" ? options.onEvent : undefined;
 

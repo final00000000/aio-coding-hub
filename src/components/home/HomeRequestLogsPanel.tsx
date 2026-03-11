@@ -446,7 +446,7 @@ export function HomeRequestLogsPanel({
         <div className="flex items-center gap-2">
           <div className="text-xs text-slate-500 dark:text-slate-400">
             {requestLogsAvailable === false
-              ? "仅在 Tauri Desktop 环境可用"
+              ? "数据不可用"
               : requestLogs.length === 0 && requestLogsLoading
                 ? "加载中…"
                 : requestLogsLoading || requestLogsRefreshing
@@ -560,9 +560,7 @@ const RequestLogsList = memo(function RequestLogsList({
       />
 
       {requestLogsAvailable === false ? (
-        <div className="p-4 text-sm text-slate-600 dark:text-slate-400">
-          仅在 Tauri Desktop 环境可用
-        </div>
+        <div className="p-4 text-sm text-slate-600 dark:text-slate-400">数据不可用</div>
       ) : requestLogs.length === 0 ? (
         requestLogsLoading ? (
           <div className="flex items-center justify-center gap-2 p-4 text-sm text-slate-600 dark:text-slate-400">

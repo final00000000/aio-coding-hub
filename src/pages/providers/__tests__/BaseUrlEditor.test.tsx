@@ -53,9 +53,7 @@ describe("pages/providers/BaseUrlEditor", () => {
     await waitFor(() => expect(screen.getByText("123ms")).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: "Ping" }));
-    await waitFor(() =>
-      expect(vi.mocked(toast)).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用")
-    );
+    await waitFor(() => expect(vi.mocked(baseUrlPingMs)).toHaveBeenCalledTimes(2));
 
     fireEvent.click(screen.getByRole("button", { name: "Ping" }));
     await waitFor(() => expect(screen.getByText("失败")).toBeInTheDocument());

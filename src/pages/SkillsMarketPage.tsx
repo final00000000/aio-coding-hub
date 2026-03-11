@@ -22,7 +22,6 @@ import type {
   InstalledSkillSummary,
   SkillRepoSummary,
 } from "../services/skills";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { Dialog } from "../ui/Dialog";
@@ -100,22 +99,21 @@ const CLI_TABS: Array<{ key: CliKey; label: string }> = CLIS.map((cli) => ({
 
 export function SkillsMarketPage() {
   const navigate = useNavigate();
-  const tauriRuntime = hasTauriRuntime();
   const [activeCli, setActiveCli] = useState<CliKey>(() => readCliFromStorage());
   const currentCli = useMemo(() => cliFromKeyOrDefault(activeCli), [activeCli]);
 
-  const reposQuery = useSkillReposListQuery({ enabled: tauriRuntime });
+  const reposQuery = useSkillReposListQuery();
   const repos = useMemo(() => reposQuery.data ?? [], [reposQuery.data]);
   const enabledRepoCount = useMemo(() => repos.filter((r) => r.enabled).length, [repos]);
 
-  const workspacesQuery = useWorkspacesListQuery(activeCli, { enabled: tauriRuntime });
+  const workspacesQuery = useWorkspacesListQuery(activeCli);
   const activeWorkspaceId = workspacesQuery.data?.active_id ?? null;
 
-  const installedQuery = useSkillsInstalledListQuery(activeWorkspaceId, { enabled: tauriRuntime });
+  const installedQuery = useSkillsInstalledListQuery(activeWorkspaceId);
   const installed = useMemo(() => installedQuery.data ?? [], [installedQuery.data]);
 
   const availableQuery = useSkillsDiscoverAvailableQuery(false, {
-    enabled: tauriRuntime && enabledRepoCount > 0,
+    enabled: enabledRepoCount > 0,
   });
   const available = useMemo(() => availableQuery.data ?? [], [availableQuery.data]);
 
@@ -148,7 +146,6 @@ export function SkillsMarketPage() {
     try {
       const rows = await discoverMutation.mutateAsync(refresh);
       if (!rows) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       logToConsole("info", refresh ? "刷新 Skill 发现（下载更新）" : "扫描 Skill（缓存）", {
@@ -251,10 +248,6 @@ export function SkillsMarketPage() {
 
   async function addRepo() {
     if (repoSaving) return;
-    if (!tauriRuntime) {
-      toast("仅在 Tauri Desktop 环境可用");
-      return;
-    }
     const gitUrl = newRepoUrl.trim();
     const branch = newRepoBranch.trim() || "auto";
     if (!gitUrl) {
@@ -271,7 +264,6 @@ export function SkillsMarketPage() {
         enabled: true,
       });
       if (!next) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 
@@ -293,10 +285,6 @@ export function SkillsMarketPage() {
 
   async function toggleRepoEnabled(repo: SkillRepoSummary, enabled: boolean) {
     if (repoToggleId != null) return;
-    if (!tauriRuntime) {
-      toast("仅在 Tauri Desktop 环境可用");
-      return;
-    }
     setRepoToggleId(repo.id);
     try {
       const next = await repoUpsertMutation.mutateAsync({
@@ -306,7 +294,6 @@ export function SkillsMarketPage() {
         enabled,
       });
       if (!next) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       toast(enabled ? "仓库已启用" : "仓库已禁用");
@@ -327,15 +314,10 @@ export function SkillsMarketPage() {
   async function confirmDeleteRepo() {
     if (!repoDeleteTarget) return;
     if (repoDeleting) return;
-    if (!tauriRuntime) {
-      toast("仅在 Tauri Desktop 环境可用");
-      return;
-    }
     setRepoDeleting(true);
     try {
       const ok = await repoDeleteMutation.mutateAsync(repoDeleteTarget.id);
       if (!ok) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       toast("仓库已删除");
@@ -361,10 +343,6 @@ export function SkillsMarketPage() {
       toast("未找到当前工作区（workspace）。请先在 Workspaces 页面创建并设为当前。");
       return;
     }
-    if (!tauriRuntime) {
-      toast("仅在 Tauri Desktop 环境可用");
-      return;
-    }
 
     setInstallingSource(key);
     try {
@@ -376,7 +354,6 @@ export function SkillsMarketPage() {
       });
 
       if (!next) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 

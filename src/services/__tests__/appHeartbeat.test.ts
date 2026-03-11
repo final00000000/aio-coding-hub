@@ -25,14 +25,6 @@ describe("services/appHeartbeat", () => {
     return await import("../appHeartbeat");
   }
 
-  it("returns noop when no tauri runtime", async () => {
-    const { listenAppHeartbeat } = await importFresh();
-    const unlisten = await listenAppHeartbeat();
-    expect(typeof unlisten).toBe("function");
-    unlisten(); // should not throw
-    expect(tauriListen).not.toHaveBeenCalled();
-  });
-
   it("listens to app:heartbeat with tauri runtime", async () => {
     setTauriRuntime();
     const { listenAppHeartbeat } = await importFresh();

@@ -116,7 +116,6 @@ export function WslSettingsCard({ available, saving, settings }: WslSettingsCard
     try {
       const report = await wslConfigureMutation.mutateAsync();
       if (!report) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       setLastReport(report);
@@ -157,7 +156,6 @@ export function WslSettingsCard({ available, saving, settings }: WslSettingsCard
         wslHostAddressMode: next,
       });
       if (!updated) {
-        toast("仅在 Tauri Desktop 环境可用");
         setHostAddressMode(settings.wsl_host_address_mode);
         return;
       }
@@ -196,7 +194,6 @@ export function WslSettingsCard({ available, saving, settings }: WslSettingsCard
         wslCustomHostAddress: trimmed,
       });
       if (!updated) {
-        toast("仅在 Tauri Desktop 环境可用");
         setCustomHostAddress(settings.wsl_custom_host_address);
         return;
       }
@@ -240,7 +237,7 @@ export function WslSettingsCard({ available, saving, settings }: WslSettingsCard
 
       {!available ? (
         <div className="text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-          仅在 Tauri Desktop 环境可用
+          数据不可用
         </div>
       ) : aboutOs && !wslSupported ? (
         <div className="text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">

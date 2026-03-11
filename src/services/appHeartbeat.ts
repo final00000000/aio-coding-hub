@@ -1,12 +1,10 @@
-import { invokeTauriOrNull, hasTauriRuntime } from "./tauriInvoke";
+import { invokeTauriOrNull } from "./tauriInvoke";
 
 export type AppHeartbeatPayload = {
   ts_unix_ms: number;
 };
 
 export async function listenAppHeartbeat(): Promise<() => void> {
-  if (!hasTauriRuntime()) return () => {};
-
   const { listen } = await import("@tauri-apps/api/event");
 
   let inFlight = false;

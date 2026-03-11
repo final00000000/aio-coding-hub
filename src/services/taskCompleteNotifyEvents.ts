@@ -10,7 +10,6 @@
 import { useSyncExternalStore } from "react";
 import { logToConsole } from "./consoleLog";
 import { noticeSend } from "./notice";
-import { hasTauriRuntime } from "./tauriInvoke";
 import type { GatewayRequestEvent, GatewayRequestStartEvent } from "./gatewayEvents";
 
 // ---------------------------------------------------------------------------
@@ -248,8 +247,6 @@ async function maybeNotify(cliKey: string) {
 // ---------------------------------------------------------------------------
 
 export async function listenTaskCompleteNotifyEvents(): Promise<() => void> {
-  if (!hasTauriRuntime()) return () => {};
-
   const { listen } = await import("@tauri-apps/api/event");
 
   const unlistenRequestStart = await listen<GatewayRequestStartEvent>(

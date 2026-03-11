@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { logToConsole } from "../consoleLog";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { invokeTauriOrNull } from "../tauriInvoke";
 import {
   appDataDirGet,
   appDataReset,
@@ -14,7 +14,6 @@ vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
   return {
     ...actual,
-    hasTauriRuntime: vi.fn(),
     invokeTauriOrNull: vi.fn(),
   };
 });
@@ -28,18 +27,7 @@ vi.mock("../consoleLog", async () => {
 });
 
 describe("services/dataManagement", () => {
-  it("returns null without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    await expect(dbDiskUsageGet()).resolves.toBeNull();
-    await expect(requestLogsClearAll()).resolves.toBeNull();
-    await expect(appDataReset()).resolves.toBeNull();
-
-    expect(logToConsole).not.toHaveBeenCalled();
-  });
-
   it("rethrows invoke errors and logs", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValueOnce(new Error("data management boom"));
 
     await expect(dbDiskUsageGet()).rejects.toThrow("data management boom");
@@ -54,14 +42,12 @@ describe("services/dataManagement", () => {
   });
 
   it("treats null invoke result as error with runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(null);
 
     await expect(dbDiskUsageGet()).rejects.toThrow("IPC_NULL_RESULT: db_disk_usage_get");
   });
 
   it("invokes data management commands with expected parameters", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValue({} as any);
 
     await dbDiskUsageGet();

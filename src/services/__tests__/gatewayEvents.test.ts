@@ -3,14 +3,6 @@ import { tauriListen, tauriUnlisten } from "../../test/mocks/tauri";
 import { setTauriRuntime } from "../../test/utils/tauriRuntime";
 
 describe("services/gatewayEvents", () => {
-  it("returns no-op when tauri runtime is missing", async () => {
-    vi.resetModules();
-    const { listenGatewayEvents } = await import("../gatewayEvents");
-    const unlisten = await listenGatewayEvents();
-    unlisten();
-    expect(tauriListen).not.toHaveBeenCalled();
-  });
-
   it("registers listeners and handles payload branches", async () => {
     setTauriRuntime();
     vi.resetModules();

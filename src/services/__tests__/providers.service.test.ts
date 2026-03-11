@@ -15,13 +15,12 @@ import {
   providerUpsert,
 } from "../providers";
 import { logToConsole } from "../consoleLog";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { invokeTauriOrNull } from "../tauriInvoke";
 
 vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
   return {
     ...actual,
-    hasTauriRuntime: vi.fn(),
     invokeTauriOrNull: vi.fn(),
   };
 });
@@ -35,21 +34,7 @@ vi.mock("../consoleLog", async () => {
 });
 
 describe("services/providers", () => {
-  it("returns null without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    await expect(providersList("claude")).resolves.toBeNull();
-    await expect(baseUrlPingMs("https://example.com")).resolves.toBeNull();
-    await expect(providerSetEnabled(1, true)).resolves.toBeNull();
-    await expect(providerDelete(1)).resolves.toBeNull();
-    await expect(providersReorder("claude", [1])).resolves.toBeNull();
-    await expect(providerClaudeTerminalLaunchCommand(1)).resolves.toBeNull();
-
-    expect(logToConsole).not.toHaveBeenCalled();
-  });
-
   it("rethrows and logs when invoke fails", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValueOnce(new Error("providers boom"));
 
     await expect(providersList("claude")).rejects.toThrow("providers boom");
@@ -64,14 +49,12 @@ describe("services/providers", () => {
   });
 
   it("treats null invoke result as error when runtime exists", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(null);
 
     await expect(providersList("claude")).rejects.toThrow("IPC_NULL_RESULT: providers_list");
   });
 
   it("builds provider_upsert args as before", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce({ id: 1, cli_key: "claude" } as any);
 
     await providerUpsert({
@@ -110,7 +93,6 @@ describe("services/providers", () => {
   });
 
   it("passes providers command args with stable contract fields", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull)
       .mockResolvedValueOnce([] as any)
       .mockResolvedValueOnce(120 as any)
@@ -150,7 +132,6 @@ describe("services/providers", () => {
   });
 
   it("providerGetApiKey delegates to invokeService", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce("sk-test-key" as any);
 
     const result = await providerGetApiKey(42);

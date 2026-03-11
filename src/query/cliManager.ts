@@ -16,14 +16,13 @@ import {
   type CodexConfigState,
   type SimpleCliInfo,
 } from "../services/cliManager";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { cliManagerKeys } from "./keys";
 
 export function useCliManagerClaudeInfoQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: cliManagerKeys.claudeInfo(),
     queryFn: () => cliManagerClaudeInfoGet(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -32,7 +31,7 @@ export function useCliManagerClaudeSettingsQuery(options?: { enabled?: boolean }
   return useQuery({
     queryKey: cliManagerKeys.claudeSettings(),
     queryFn: () => cliManagerClaudeSettingsGet(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -41,7 +40,7 @@ export function useCliManagerCodexInfoQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: cliManagerKeys.codexInfo(),
     queryFn: () => cliManagerCodexInfoGet(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -50,7 +49,7 @@ export function useCliManagerCodexConfigQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: cliManagerKeys.codexConfig(),
     queryFn: () => cliManagerCodexConfigGet(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -59,7 +58,7 @@ export function useCliManagerCodexConfigTomlQuery(options?: { enabled?: boolean 
   return useQuery({
     queryKey: cliManagerKeys.codexConfigToml(),
     queryFn: () => cliManagerCodexConfigTomlGet(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -68,7 +67,7 @@ export function useCliManagerGeminiInfoQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: cliManagerKeys.geminiInfo(),
     queryFn: () => cliManagerGeminiInfoGet(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

@@ -239,8 +239,5 @@ describe("settings/ModelPriceAliasesDialog", () => {
     render(<ModelPriceAliasesDialog open={true} onOpenChange={onOpenChange} />);
 
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
-    await waitFor(() => {
-      expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用");
-    });
   });
 });

@@ -31,16 +31,6 @@ vi.mock("../../services/usage", async () => {
 });
 
 describe("query/usage", () => {
-  it("does not call usageHourlySeries without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useUsageHourlySeriesQuery(7), { wrapper });
-    await Promise.resolve();
-
-    expect(usageHourlySeries).not.toHaveBeenCalled();
-  });
-
   it("calls usageHourlySeries with tauri runtime", async () => {
     setTauriRuntime();
 
@@ -81,16 +71,6 @@ describe("query/usage", () => {
     await Promise.resolve();
 
     expect(usageHourlySeries).not.toHaveBeenCalled();
-  });
-
-  it("does not call usageSummary without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useUsageSummaryQuery("today", { cliKey: null }), { wrapper });
-    await Promise.resolve();
-
-    expect(usageSummary).not.toHaveBeenCalled();
   });
 
   it("calls usageSummary with tauri runtime and respects options.enabled + refetchIntervalMs branches", async () => {

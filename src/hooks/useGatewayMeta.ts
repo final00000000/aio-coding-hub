@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import type { GatewayStatus } from "../services/gateway";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { useGatewayStatusQuery } from "../query/gateway";
 import { useSettingsQuery } from "../query/settings";
 
@@ -15,20 +14,10 @@ export type GatewayMeta = {
 const DEFAULT_PREFERRED_PORT = 37123;
 
 export function useGatewayMeta(): GatewayMeta {
-  const tauriRuntime = hasTauriRuntime();
-
-  const settingsQuery = useSettingsQuery({ enabled: tauriRuntime });
-  const gatewayStatusQuery = useGatewayStatusQuery({ enabled: tauriRuntime });
+  const settingsQuery = useSettingsQuery();
+  const gatewayStatusQuery = useGatewayStatusQuery();
 
   return useMemo(() => {
-    if (!tauriRuntime) {
-      return {
-        gatewayAvailable: "unavailable",
-        gateway: null,
-        preferredPort: DEFAULT_PREFERRED_PORT,
-      };
-    }
-
     const preferredPort = settingsQuery.data?.preferred_port ?? DEFAULT_PREFERRED_PORT;
 
     if (gatewayStatusQuery.isLoading) {
@@ -58,6 +47,5 @@ export function useGatewayMeta(): GatewayMeta {
     gatewayStatusQuery.isError,
     gatewayStatusQuery.isLoading,
     settingsQuery.data?.preferred_port,
-    tauriRuntime,
   ]);
 }

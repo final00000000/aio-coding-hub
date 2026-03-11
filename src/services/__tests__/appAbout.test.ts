@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 import { logToConsole } from "../consoleLog";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { invokeTauriOrNull } from "../tauriInvoke";
 import { appAboutGet } from "../appAbout";
 
 vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
-  return { ...actual, hasTauriRuntime: vi.fn(), invokeTauriOrNull: vi.fn() };
+  return { ...actual, invokeTauriOrNull: vi.fn() };
 });
 
 vi.mock("../consoleLog", async () => {
@@ -15,8 +15,6 @@ vi.mock("../consoleLog", async () => {
 
 describe("services/appAbout", () => {
   it("returns about info when available", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
-
     vi.mocked(invokeTauriOrNull).mockResolvedValue({
       os: "mac",
       arch: "arm64",
@@ -32,17 +30,7 @@ describe("services/appAbout", () => {
     );
   });
 
-  it("returns null without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    const result = await appAboutGet();
-    expect(result).toBeNull();
-    expect(invokeTauriOrNull).not.toHaveBeenCalled();
-    expect(logToConsole).not.toHaveBeenCalled();
-  });
-
   it("throws when invoke throws", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValue(new Error("boom"));
 
     await expect(appAboutGet()).rejects.toThrow("boom");
@@ -57,7 +45,6 @@ describe("services/appAbout", () => {
   });
 
   it("throws when invoke returns null", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValue(null as any);
 
     await expect(appAboutGet()).rejects.toThrow("IPC_NULL_RESULT: app_about_get");

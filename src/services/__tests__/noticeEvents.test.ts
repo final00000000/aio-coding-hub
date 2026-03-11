@@ -13,16 +13,6 @@ vi.mock("../consoleLog", () => ({
 }));
 
 describe("services/noticeEvents", () => {
-  it("returns no-op when tauri runtime is missing", async () => {
-    vi.resetModules();
-    const { listenNoticeEvents } = await import("../noticeEvents");
-
-    const unlisten = await listenNoticeEvents();
-    unlisten();
-
-    expect(tauriListen).not.toHaveBeenCalled();
-  });
-
   it("listens and sends notifications when permission is granted", async () => {
     setTauriRuntime();
     vi.resetModules();

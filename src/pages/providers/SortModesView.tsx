@@ -252,7 +252,6 @@ export function SortModesView({
     try {
       const saved = await createSortModeMutation.mutateAsync({ name });
       if (!saved) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       setSortModes((prev) => [...prev, saved]);
@@ -280,7 +279,6 @@ export function SortModesView({
     try {
       const saved = await renameSortModeMutation.mutateAsync({ modeId: selectedMode.id, name });
       if (!saved) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       setSortModes((prev) => prev.map((m) => (m.id === saved.id ? saved : m)));
@@ -300,7 +298,6 @@ export function SortModesView({
     try {
       const ok = await deleteSortModeMutation.mutateAsync({ modeId: deleteModeTarget.id });
       if (!ok) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       setSortModes((prev) => prev.filter((m) => m.id !== deleteModeTarget.id));
@@ -348,7 +345,6 @@ export function SortModesView({
       });
 
       if (!saved) {
-        toast("仅在 Tauri Desktop 环境可用");
         if (activeModeIdRef.current === modeId && activeCliRef.current === cliKey) {
           setModeProviders(prevRows);
           modeProvidersRef.current = prevRows;
@@ -429,7 +425,6 @@ export function SortModesView({
       });
 
       if (!saved) {
-        toast("仅在 Tauri Desktop 环境可用");
         if (activeModeIdRef.current === modeId && activeCliRef.current === cliKey) {
           setModeProviders(prevRows);
           modeProvidersRef.current = prevRows;
@@ -501,11 +496,7 @@ export function SortModesView({
               </Button>
             ))}
             <span className="text-xs text-slate-500 dark:text-slate-400">
-              {sortModesLoading
-                ? "加载中…"
-                : sortModesAvailable === false
-                  ? "仅在 Tauri Desktop 环境可用"
-                  : `共 ${sortModes.length + 1} 个`}
+              {sortModesLoading ? "加载中…" : `共 ${sortModes.length + 1} 个`}
             </span>
           </div>
 
@@ -590,11 +581,9 @@ export function SortModesView({
                         : "加入";
                     const buttonTitle = !modeSelected
                       ? "请选择一个自定义排序模板后再加入"
-                      : modeUnavailable
-                        ? "仅在 Tauri Desktop 环境可用"
-                        : modeProvidersLoading
-                          ? "右侧列表加载中…"
-                          : undefined;
+                      : modeProvidersLoading
+                        ? "右侧列表加载中…"
+                        : undefined;
                     return (
                       <Card
                         key={p.id}
@@ -652,10 +641,6 @@ export function SortModesView({
                 </div>
               ) : modeProvidersLoading ? (
                 <div className="text-sm text-slate-600 dark:text-slate-400">加载中…</div>
-              ) : modeProvidersAvailable === false ? (
-                <div className="text-sm text-slate-600 dark:text-slate-400">
-                  仅在 Tauri Desktop 环境可用
-                </div>
               ) : modeProviders.length === 0 ? (
                 <div className="space-y-2">
                   <div className="rounded-xl border border-amber-200 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30 px-3 py-2 text-sm text-amber-800 dark:text-amber-400">

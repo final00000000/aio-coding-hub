@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createTestQueryClient } from "../../test/utils/reactQuery";
-import { setTauriRuntime, clearTauriRuntime } from "../../test/utils/tauriRuntime";
+import { setTauriRuntime } from "../../test/utils/tauriRuntime";
 vi.mock("../../services/clipboard", () => ({ copyText: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@tanstack/react-virtual", () => ({
   useVirtualizer: ({ count }: { count: number }) => {
@@ -38,12 +38,8 @@ function renderWithProviders(ui: React.ReactElement, { route = "/" } = {}) {
 }
 describe("pages/SessionsPage", () => {
   beforeEach(() => {
-    clearTauriRuntime();
+    setTauriRuntime();
     vi.mocked(cliSessionsProjectsList).mockResolvedValue([]);
-  });
-  it("renders empty state when no Tauri runtime", () => {
-    renderWithProviders(<SessionsPage />);
-    expect(screen.getByText("该功能仅在桌面端可用")).toBeInTheDocument();
   });
   it("renders loading state with Tauri runtime", () => {
     setTauriRuntime();

@@ -11,13 +11,12 @@ import {
   type GatewayProviderCircuitStatus,
   type GatewayStatus,
 } from "../gateway";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { invokeTauriOrNull } from "../tauriInvoke";
 
 vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
   return {
     ...actual,
-    hasTauriRuntime: vi.fn(),
     invokeTauriOrNull: vi.fn(),
   };
 });
@@ -31,20 +30,7 @@ vi.mock("../consoleLog", async () => {
 });
 
 describe("services/gateway", () => {
-  it("returns null without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    await expect(gatewayStatus()).resolves.toBeNull();
-    await expect(gatewaySessionsList(20)).resolves.toBeNull();
-    await expect(gatewayCircuitStatus("claude")).resolves.toBeNull();
-
-    expect(invokeTauriOrNull).not.toHaveBeenCalled();
-    expect(logToConsole).not.toHaveBeenCalled();
-  });
-
   it("returns invoke result with tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
-
     const status: GatewayStatus = {
       running: true,
       port: 37123,
@@ -88,7 +74,6 @@ describe("services/gateway", () => {
   });
 
   it("passes gateway command args with stable contract fields", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull)
       .mockResolvedValueOnce({ running: true } as any)
       .mockResolvedValueOnce({ running: false } as any)
@@ -128,7 +113,6 @@ describe("services/gateway", () => {
   });
 
   it("rethrows invoke errors and logs details", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValueOnce(new Error("boom"));
 
     await expect(gatewayStatus()).rejects.toThrow("boom");
@@ -143,7 +127,6 @@ describe("services/gateway", () => {
   });
 
   it("treats null invoke result as error and logs", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(null);
 
     await expect(gatewayStatus()).rejects.toThrow("IPC_NULL_RESULT: gateway_status");

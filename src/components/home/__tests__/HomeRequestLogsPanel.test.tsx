@@ -274,7 +274,7 @@ describe("components/home/HomeRequestLogsPanel", () => {
       </MemoryRouter>
     );
 
-    expect(screen.getAllByText("仅在 Tauri Desktop 环境可用").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("数据不可用").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "刷新" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "日志" })).toBeDisabled();
   });

@@ -278,7 +278,7 @@ describe("pages/CliManagerPage", () => {
     await waitFor(() => expect(rectifierMutation.mutateAsync).toHaveBeenCalled());
 
     fireEvent.click(screen.getByRole("button", { name: "persist-rectifier" }));
-    await waitFor(() => expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用"));
+    await waitFor(() => expect(rectifierMutation.mutateAsync).toHaveBeenCalledTimes(2));
 
     fireEvent.click(screen.getByRole("button", { name: "persist-rectifier" }));
     await waitFor(() =>
@@ -292,14 +292,14 @@ describe("pages/CliManagerPage", () => {
     expect(toast).toHaveBeenCalledWith("已开启熔断通知");
 
     fireEvent.click(screen.getByRole("button", { name: "persist-circuit-notice" }));
-    await waitFor(() => expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用"));
+    await waitFor(() => expect(noticeMutation.mutateAsync).toHaveBeenCalledTimes(2));
 
     fireEvent.click(screen.getByRole("button", { name: "persist-codex-completion" }));
     await waitFor(() => expect(completionMutation.mutateAsync).toHaveBeenCalledWith(false));
     expect(toast).toHaveBeenCalledWith("已关闭 Codex Session ID 补全");
 
     fireEvent.click(screen.getByRole("button", { name: "persist-codex-completion" }));
-    await waitFor(() => expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用"));
+    await waitFor(() => expect(completionMutation.mutateAsync).toHaveBeenCalledTimes(2));
 
     fireEvent.click(screen.getByRole("button", { name: "persist-common" }));
     await waitFor(() => expect(commonMutation.mutateAsync).toHaveBeenCalled());
@@ -413,7 +413,7 @@ describe("pages/CliManagerPage", () => {
 
     // persist claude settings: null -> toast; ok -> toast; error -> toast
     fireEvent.click(screen.getByRole("button", { name: "save-claude" }));
-    await waitFor(() => expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用"));
+    await waitFor(() => expect(claudeSetMutation.mutateAsync).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByRole("button", { name: "save-claude" }));
     await waitFor(() => expect(toast).toHaveBeenCalledWith("已更新 Claude Code 配置"));
     fireEvent.click(screen.getByRole("button", { name: "save-claude" }));
@@ -442,7 +442,7 @@ describe("pages/CliManagerPage", () => {
 
     // persist codex config: null -> toast; ok -> toast; error -> toast formatted
     fireEvent.click(screen.getByRole("button", { name: "save-codex" }));
-    await waitFor(() => expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用"));
+    await waitFor(() => expect(codexSetMutation.mutateAsync).toHaveBeenCalledTimes(1));
     fireEvent.click(screen.getByRole("button", { name: "save-codex" }));
     await waitFor(() => expect(toast).toHaveBeenCalledWith("已更新 Codex 配置"));
     fireEvent.click(screen.getByRole("button", { name: "save-codex" }));
@@ -720,7 +720,7 @@ describe("pages/CliManagerPage", () => {
 
     // common settings: null -> tauri-only toast
     fireEvent.click(screen.getByRole("button", { name: "persist-common" }));
-    await waitFor(() => expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用"));
+    await waitFor(() => expect(commonMutation.mutateAsync).toHaveBeenCalledTimes(1));
 
     // open dirs success + claude dir fallback (claudeInfo.config_dir=null -> use claudeSettings.config_dir)
     fireEvent.click(screen.getByRole("tab", { name: "Claude Code" }));

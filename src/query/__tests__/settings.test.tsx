@@ -41,16 +41,6 @@ vi.mock("../../services/settingsCodexSessionIdCompletion", async () => {
 });
 
 describe("query/settings", () => {
-  it("does not call settingsGet without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useSettingsQuery(), { wrapper });
-    await Promise.resolve();
-
-    expect(settingsGet).not.toHaveBeenCalled();
-  });
-
   it("calls settingsGet with tauri runtime", async () => {
     setTauriRuntime();
     vi.mocked(settingsGet).mockResolvedValue(createTestAppSettings());

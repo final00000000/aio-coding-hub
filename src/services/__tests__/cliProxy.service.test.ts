@@ -1,13 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { logToConsole } from "../consoleLog";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { invokeTauriOrNull } from "../tauriInvoke";
 import { cliProxySetEnabled, cliProxyStatusAll, cliProxySyncEnabled } from "../cliProxy";
 
 vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
   return {
     ...actual,
-    hasTauriRuntime: vi.fn(),
     invokeTauriOrNull: vi.fn(),
   };
 });
@@ -21,17 +20,7 @@ vi.mock("../consoleLog", async () => {
 });
 
 describe("services/cliProxy", () => {
-  it("returns null without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    await expect(cliProxyStatusAll()).resolves.toBeNull();
-    await expect(cliProxySetEnabled({ cli_key: "claude", enabled: true })).resolves.toBeNull();
-
-    expect(logToConsole).not.toHaveBeenCalled();
-  });
-
   it("rethrows invoke errors and logs", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValueOnce(new Error("cli proxy boom"));
 
     await expect(cliProxyStatusAll()).rejects.toThrow("cli proxy boom");
@@ -46,14 +35,12 @@ describe("services/cliProxy", () => {
   });
 
   it("treats null invoke result as error with runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(null);
 
     await expect(cliProxyStatusAll()).rejects.toThrow("IPC_NULL_RESULT: cli_proxy_status_all");
   });
 
   it("keeps argument mapping unchanged", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValue([] as any);
 
     await cliProxyStatusAll();

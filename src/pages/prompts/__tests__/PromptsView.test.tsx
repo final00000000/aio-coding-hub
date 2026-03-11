@@ -141,9 +141,7 @@ describe("pages/prompts/PromptsView", () => {
     fireEvent.change(contentTextarea, { target: { value: "x" } });
 
     fireEvent.click(dialog.getByRole("button", { name: "保存" }));
-    await waitFor(() =>
-      expect(vi.mocked(toast)).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用")
-    );
+    await waitFor(() => expect(upsertMutation.mutateAsync).toHaveBeenCalledTimes(1));
 
     vi.mocked(toast).mockClear();
     fireEvent.click(dialog.getByRole("button", { name: "保存" }));
@@ -211,7 +209,6 @@ describe("pages/prompts/PromptsView", () => {
     const switches = screen.getAllByRole("switch");
     fireEvent.click(switches[0]!); // enable P1 -> null branch
     await waitFor(() => expect(toggleMutation.mutateAsync).toHaveBeenCalledTimes(1));
-    expect(vi.mocked(toast)).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用");
 
     vi.mocked(toast).mockClear();
     fireEvent.click(switches[0]!); // enable P1 -> enabled true

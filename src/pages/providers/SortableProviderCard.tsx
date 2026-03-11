@@ -13,6 +13,7 @@ import {
 import { Button } from "../../ui/Button";
 import { Card } from "../../ui/Card";
 import { Switch } from "../../ui/Switch";
+import { useNowUnix } from "../../hooks/useNowUnix";
 import { cn } from "../../utils/cn";
 import { formatCountdownSeconds, formatUnixSeconds, formatUsdRaw } from "../../utils/formatters";
 import { providerBaseUrlSummary } from "./baseUrl";
@@ -90,15 +91,7 @@ export function SortableProviderCard({
   const isOpen = circuit?.state === "OPEN";
   const cooldownUntil = circuit?.cooldown_until ?? null;
   const isUnavailable = isOpen || (cooldownUntil != null && Number.isFinite(cooldownUntil));
-  const [nowUnix, setNowUnix] = useState(() => Math.floor(Date.now() / 1000));
-  useEffect(() => {
-    if (!isUnavailable) return;
-    setNowUnix(Math.floor(Date.now() / 1000));
-    const timer = window.setInterval(() => {
-      setNowUnix(Math.floor(Date.now() / 1000));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [isUnavailable]);
+  const nowUnix = useNowUnix(isUnavailable);
 
   const unavailableUntil = isUnavailable
     ? (() => {

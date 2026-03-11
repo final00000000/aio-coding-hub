@@ -7,7 +7,6 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { toast } from "sonner";
 import type { CliSessionsSource, CliSessionsProjectSummary } from "../services/cliSessions";
 import { copyText } from "../services/clipboard";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { PageHeader } from "../ui/PageHeader";
@@ -72,7 +71,6 @@ function compareProject(
 }
 
 export function SessionsPage() {
-  const tauriRuntime = hasTauriRuntime();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [source, setSource] = useState<CliSessionsSource>(() => {
@@ -109,11 +107,7 @@ export function SessionsPage() {
   }, [projects]);
 
   const loading = projectsQuery.isLoading;
-  const available: boolean | null = !tauriRuntime
-    ? false
-    : loading
-      ? null
-      : projectsQuery.data != null;
+  const available: boolean | null = loading ? null : projectsQuery.data != null;
 
   function handleSourceChange(next: CliSessionsSource) {
     setSource(next);
@@ -137,13 +131,7 @@ export function SessionsPage() {
         }
       />
 
-      {!tauriRuntime ? (
-        <EmptyState
-          title="该功能仅在桌面端可用"
-          description="需要在 Tauri 运行时读取本地会话文件。"
-          variant="dashed"
-        />
-      ) : projectsQuery.error ? (
+      {projectsQuery.error ? (
         <ErrorState
           title="加载项目失败"
           message={String(projectsQuery.error)}

@@ -210,7 +210,6 @@ export function CliManagerPage() {
     try {
       const updated = await rectifierMutation.mutateAsync(next);
       if (!updated) {
-        toast("仅在 Tauri Desktop 环境可用");
         setRectifier(prev);
         return;
       }
@@ -244,7 +243,6 @@ export function CliManagerPage() {
     try {
       const updated = await circuitBreakerNoticeMutation.mutateAsync(enable);
       if (!updated) {
-        toast("仅在 Tauri Desktop 环境可用");
         setCircuitBreakerNoticeEnabled(prev);
         return;
       }
@@ -267,7 +265,6 @@ export function CliManagerPage() {
     try {
       const updated = await codexSessionIdCompletionMutation.mutateAsync(enable);
       if (!updated) {
-        toast("仅在 Tauri Desktop 环境可用");
         setCodexSessionIdCompletionEnabled(prev);
         return;
       }
@@ -356,7 +353,6 @@ export function CliManagerPage() {
       });
 
       if (!updated) {
-        toast("仅在 Tauri Desktop 环境可用");
         return null;
       }
 
@@ -410,7 +406,6 @@ export function CliManagerPage() {
     try {
       const updated = await codexConfigSetMutation.mutateAsync(patch);
       if (!updated) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       toast("已更新 Codex 配置");
@@ -432,7 +427,6 @@ export function CliManagerPage() {
     try {
       const updated = await codexConfigTomlSetMutation.mutateAsync({ toml });
       if (!updated) {
-        toast("仅在 Tauri Desktop 环境可用");
         return false;
       }
       toast("已保存 config.toml");
@@ -455,7 +449,6 @@ export function CliManagerPage() {
     try {
       const updated = await claudeSettingsSetMutation.mutateAsync(patch);
       if (!updated) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       toast("已更新 Claude Code 配置");

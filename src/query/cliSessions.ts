@@ -5,14 +5,13 @@ import {
   cliSessionsSessionsList,
   type CliSessionsSource,
 } from "../services/cliSessions";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { cliSessionsKeys } from "./keys";
 
 export function useCliSessionsProjectsListQuery(source: CliSessionsSource) {
   return useQuery({
     queryKey: cliSessionsKeys.projectsList(source),
     queryFn: () => cliSessionsProjectsList(source),
-    enabled: hasTauriRuntime(),
+    enabled: true,
     placeholderData: keepPreviousData,
   });
 }
@@ -25,7 +24,7 @@ export function useCliSessionsSessionsListQuery(
   return useQuery({
     queryKey: cliSessionsKeys.sessionsList(source, projectId),
     queryFn: () => cliSessionsSessionsList(source, projectId),
-    enabled: hasTauriRuntime() && Boolean(projectId.trim()) && (options?.enabled ?? true),
+    enabled: Boolean(projectId.trim()) && (options?.enabled ?? true),
     placeholderData: keepPreviousData,
   });
 }
@@ -46,7 +45,7 @@ export function useCliSessionsMessagesInfiniteQuery(
         page_size: 50,
         from_end: fromEnd,
       }),
-    enabled: hasTauriRuntime() && Boolean(filePath.trim()) && (options?.enabled ?? true),
+    enabled: Boolean(filePath.trim()) && (options?.enabled ?? true),
     getNextPageParam: (lastPage) => (lastPage?.has_more ? lastPage.page + 1 : undefined),
     initialPageParam: 0,
   });

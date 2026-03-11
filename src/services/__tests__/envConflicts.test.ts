@@ -1,13 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { logToConsole } from "../consoleLog";
 import { envConflictsCheck } from "../envConflicts";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { invokeTauriOrNull } from "../tauriInvoke";
 
 vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
   return {
     ...actual,
-    hasTauriRuntime: vi.fn(),
     invokeTauriOrNull: vi.fn(),
   };
 });
@@ -21,15 +20,7 @@ vi.mock("../consoleLog", async () => {
 });
 
 describe("services/envConflicts", () => {
-  it("returns null without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    await expect(envConflictsCheck("codex")).resolves.toBeNull();
-    expect(logToConsole).not.toHaveBeenCalled();
-  });
-
   it("rethrows invoke errors and logs", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValueOnce(new Error("env conflicts boom"));
 
     await expect(envConflictsCheck("codex")).rejects.toThrow("env conflicts boom");
@@ -44,7 +35,6 @@ describe("services/envConflicts", () => {
   });
 
   it("treats null invoke result as error with runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(null);
 
     await expect(envConflictsCheck("codex")).rejects.toThrow(
@@ -53,7 +43,6 @@ describe("services/envConflicts", () => {
   });
 
   it("keeps argument mapping unchanged", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValue([] as any);
 
     await envConflictsCheck("codex");

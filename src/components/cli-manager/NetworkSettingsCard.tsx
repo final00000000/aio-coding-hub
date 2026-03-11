@@ -137,7 +137,6 @@ export function NetworkSettingsCard({
     try {
       const updated = await onPersistSettings({ gateway_listen_mode: next });
       if (!updated) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 
@@ -162,7 +161,6 @@ export function NetworkSettingsCard({
     try {
       const updated = await onPersistSettings({ gateway_custom_listen_address: customAddress });
       if (!updated) {
-        toast("仅在 Tauri Desktop 环境可用");
         setCustomAddress(settings.gateway_custom_listen_address);
         return;
       }
@@ -198,7 +196,7 @@ export function NetworkSettingsCard({
 
         {!available ? (
           <div className="text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800 p-4 rounded-lg">
-            仅在 Tauri Desktop 环境可用
+            数据不可用
           </div>
         ) : (
           <div className="space-y-1">

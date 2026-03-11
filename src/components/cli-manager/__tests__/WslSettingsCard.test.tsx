@@ -47,7 +47,7 @@ describe("components/cli-manager/WslSettingsCard", () => {
     render(<WslSettingsCard available={false} saving={false} settings={{} as any} />);
 
     expect(screen.getByText("WSL 配置")).toBeInTheDocument();
-    expect(screen.getByText("仅在 Tauri Desktop 环境可用")).toBeInTheDocument();
+    expect(screen.getByText("数据不可用")).toBeInTheDocument();
   });
 
   it("refreshes overview and runs configure flow", async () => {
@@ -186,10 +186,10 @@ describe("components/cli-manager/WslSettingsCard", () => {
       <WslSettingsCard available={true} saving={false} settings={settings} />
     );
 
-    // report=null -> tauri unavailable toast.
+    // report=null -> silent return.
     configureMutation.mutateAsync.mockResolvedValueOnce(null);
     fireEvent.click(screen.getByRole("button", { name: "立即配置" }));
-    await waitFor(() => expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用"));
+    await waitFor(() => expect(configureMutation.mutateAsync).toHaveBeenCalledTimes(1));
 
     // ok=false + empty message -> fallback "配置失败" + refresh called.
     vi.mocked(toast).mockClear();

@@ -36,7 +36,6 @@ async function pingBaseUrlRow(
   try {
     const ms = await baseUrlPingMs(baseUrl);
     if (ms == null) {
-      toast("仅在 Tauri Desktop 环境可用");
       setRows((prev) =>
         prev.map((row) =>
           row.id === rowId && row.url.trim() === baseUrl

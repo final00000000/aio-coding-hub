@@ -139,7 +139,6 @@ export function ModelPriceAliasesDialog({
     try {
       const saved = await aliasesSetMutation.mutateAsync(aliases);
       if (!saved) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       setAliases(normalizeAliases(saved));

@@ -204,7 +204,6 @@ describe("settings/useSettingsPersistence", () => {
       expect(mutation.mutateAsync).toHaveBeenCalled();
     });
 
-    expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用");
     expect(result.current.port).toBe(37123);
   });
 

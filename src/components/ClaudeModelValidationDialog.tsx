@@ -1567,12 +1567,9 @@ export function ClaudeModelValidationDialog({
           }
 
           if (!resp) {
-            toast("仅在 Tauri Desktop 环境可用");
             setSuiteSteps((prev) =>
               prev.map((s) =>
-                s.index === idx + 1
-                  ? { ...s, status: "error", error: "仅在 Tauri Desktop 环境可用" }
-                  : s
+                s.index === idx + 1 ? { ...s, status: "error", error: "IPC 调用返回空" } : s
               )
             );
             return;
@@ -1648,7 +1645,6 @@ export function ClaudeModelValidationDialog({
 
       const ok = await claudeValidationHistoryClearProvider({ provider_id: curProvider.id });
       if (ok == null) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       if (!ok) {

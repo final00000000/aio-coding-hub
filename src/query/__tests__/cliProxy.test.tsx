@@ -18,16 +18,6 @@ vi.mock("../../services/cliProxy", async () => {
 });
 
 describe("query/cliProxy", () => {
-  it("does not call cliProxyStatusAll without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useCliProxyStatusAllQuery(), { wrapper });
-    await Promise.resolve();
-
-    expect(cliProxyStatusAll).not.toHaveBeenCalled();
-  });
-
   it("calls cliProxyStatusAll with tauri runtime", async () => {
     setTauriRuntime();
     vi.mocked(cliProxyStatusAll).mockResolvedValue([]);

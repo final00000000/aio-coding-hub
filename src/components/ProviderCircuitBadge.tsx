@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cliBadgeTone, cliShortLabel } from "../constants/clis";
+import { useNowUnix } from "../hooks/useNowUnix";
 import type { CliKey } from "../services/providers";
 import { Button } from "../ui/Button";
 import { Popover } from "../ui/Popover";
@@ -28,16 +29,7 @@ export function ProviderCircuitBadge({
 }: ProviderCircuitBadgeProps) {
   const count = rows.length;
   const [popoverOpen, setPopoverOpen] = useState(false);
-  const [nowUnix, setNowUnix] = useState(() => Math.floor(Date.now() / 1000));
-
-  useEffect(() => {
-    if (count === 0 || !popoverOpen) return;
-    setNowUnix(Math.floor(Date.now() / 1000));
-    const timer = window.setInterval(() => {
-      setNowUnix(Math.floor(Date.now() / 1000));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [count, popoverOpen]);
+  const nowUnix = useNowUnix(count > 0 && popoverOpen);
 
   useEffect(() => {
     if (count === 0 && popoverOpen) {

@@ -56,8 +56,7 @@ describe("components/UpdateDialog", () => {
     await waitFor(() => {
       expect(updateDownloadAndInstall).toHaveBeenCalled();
     });
-    expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用");
-    expect(updateDialogSetOpen).not.toHaveBeenCalled();
+    expect(updateDialogSetOpen).toHaveBeenCalledWith(false);
   });
 
   it("runs restart countdown after a successful install", async () => {

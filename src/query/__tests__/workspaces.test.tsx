@@ -43,16 +43,6 @@ vi.mock("../../services/workspaces", async () => {
 });
 
 describe("query/workspaces", () => {
-  it("does not call workspacesList without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useWorkspacesListQuery("claude"), { wrapper });
-    await Promise.resolve();
-
-    expect(workspacesList).not.toHaveBeenCalled();
-  });
-
   it("calls workspacesList with tauri runtime", async () => {
     setTauriRuntime();
 

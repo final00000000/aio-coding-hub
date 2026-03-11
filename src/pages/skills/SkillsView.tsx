@@ -23,7 +23,6 @@ import { Switch } from "../../ui/Switch";
 import { cn } from "../../utils/cn";
 import { formatActionFailureToast } from "../../utils/errors";
 
-const TOAST_TAURI_ONLY = "仅在 Tauri Desktop 环境可用";
 const TOAST_LOCAL_IMPORT_REQUIRES_ACTIVE = "仅当前工作区可导入本机 Skill。请先切换该工作区为当前。";
 const TOAST_RETURN_LOCAL_REQUIRES_ACTIVE = "仅当前工作区可返回本机 Skill。请先切换该工作区为当前。";
 
@@ -119,7 +118,6 @@ export function SkillsView({
     try {
       const next = await toggleMutation.mutateAsync({ skillId: skill.id, enabled });
       if (!next) {
-        toast(TOAST_TAURI_ONLY);
         return;
       }
       if (enabled) {
@@ -152,7 +150,6 @@ export function SkillsView({
     try {
       const ok = await returnToLocalMutation.mutateAsync(target.id);
       if (!ok) {
-        toast(TOAST_TAURI_ONLY);
         return;
       }
       toast("已返回本机已安装");
@@ -186,7 +183,6 @@ export function SkillsView({
     try {
       const next = await importMutation.mutateAsync(target.dir_name);
       if (!next) {
-        toast(TOAST_TAURI_ONLY);
         return;
       }
 

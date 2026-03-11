@@ -33,16 +33,6 @@ vi.mock("../../services/modelPrices", async () => {
 });
 
 describe("query/modelPrices", () => {
-  it("does not call modelPricesList without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useModelPricesListQuery("claude"), { wrapper });
-    await Promise.resolve();
-
-    expect(modelPricesList).not.toHaveBeenCalled();
-  });
-
   it("calls modelPricesList with tauri runtime", async () => {
     setTauriRuntime();
     vi.mocked(modelPricesList).mockResolvedValue([]);

@@ -11,7 +11,6 @@ import {
   type UpdaterCheckUpdate,
   type UpdaterDownloadEvent,
 } from "../services/updater";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import type { AppAboutInfo } from "../services/appAbout";
 
 const STORAGE_KEY_LAST_CHECKED_AT_MS = "updater.lastCheckedAtMs";
@@ -91,14 +90,7 @@ async function ensureStarted() {
   if (starting) return starting;
 
   starting = (async () => {
-    if (!hasTauriRuntime()) {
-      started = true;
-      starting = null;
-      return;
-    }
-
     scheduleAutoCheck();
-
     started = true;
     starting = null;
   })();
@@ -141,15 +133,25 @@ async function autoCheckOnStartup() {
   logToConsole("info", "初始化：已是最新版本");
 }
 
+/** Stored for potential cleanup in test environments. */
+const autoCheckTimers: {
+  timeout: ReturnType<typeof setTimeout> | null;
+  interval: ReturnType<typeof setInterval> | null;
+} = {
+  timeout: null,
+  interval: null,
+};
+
 function scheduleAutoCheck() {
   if (autoCheckScheduled) return;
   autoCheckScheduled = true;
 
-  setTimeout(() => {
+  autoCheckTimers.timeout = setTimeout(() => {
+    autoCheckTimers.timeout = null;
     autoCheckOnStartup().catch(() => {});
   }, AUTO_CHECK_DELAY_MS);
 
-  setInterval(() => {
+  autoCheckTimers.interval = setInterval(() => {
     autoCheckIfDue().catch(() => {});
   }, AUTO_CHECK_TICK_MS);
 }
@@ -162,7 +164,6 @@ export async function updateCheckNow(options: {
 
   sessionChecked = true;
 
-  if (!hasTauriRuntime()) return null;
   if (checkingPromise) return checkingPromise;
 
   checkingPromise = (async () => {
@@ -222,7 +223,6 @@ function onUpdaterDownloadEvent(evt: UpdaterDownloadEvent) {
 
 export async function updateDownloadAndInstall(): Promise<boolean | null> {
   await ensureStarted();
-  if (!hasTauriRuntime()) return null;
 
   const updateCandidate =
     queryClient.getQueryData<UpdaterCheckUpdate | null>(updaterKeys.check()) ?? null;

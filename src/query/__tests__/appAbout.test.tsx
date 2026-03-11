@@ -15,16 +15,6 @@ vi.mock("../../services/appAbout", async () => {
 });
 
 describe("query/appAbout", () => {
-  it("does not call appAboutGet without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useAppAboutQuery(), { wrapper });
-    await Promise.resolve();
-
-    expect(appAboutGet).not.toHaveBeenCalled();
-  });
-
   it("fetches about info when tauri runtime is available", async () => {
     setTauriRuntime();
 

@@ -1,14 +1,13 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { CliKey } from "../services/providers";
 import { cliProxySetEnabled, cliProxyStatusAll, type CliProxyStatus } from "../services/cliProxy";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { cliProxyKeys } from "./keys";
 
 export function useCliProxyStatusAllQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: cliProxyKeys.statusAll(),
     queryFn: () => cliProxyStatusAll(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

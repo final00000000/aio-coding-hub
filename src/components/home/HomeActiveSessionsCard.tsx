@@ -40,9 +40,7 @@ export function HomeActiveSessionsCardContent({
   }
 
   if (activeSessionsAvailable === false) {
-    return (
-      <div className="text-sm text-slate-600 dark:text-slate-400">仅在 Tauri Desktop 环境可用</div>
-    );
+    return <div className="text-sm text-slate-600 dark:text-slate-400">数据不可用</div>;
   }
 
   if (activeSessions.length === 0) {

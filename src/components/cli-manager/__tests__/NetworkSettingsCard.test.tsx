@@ -166,7 +166,7 @@ describe("components/cli-manager/NetworkSettingsCard", () => {
     fireEvent.change(input, { target: { value: "[::1]" } });
     fireEvent.blur(input);
 
-    await waitFor(() => expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用"));
+    await waitFor(() => expect(onPersistSettings).toHaveBeenCalled());
     await waitFor(() => expect((input as HTMLInputElement).value).toBe("0.0.0.0:37123"));
 
     vi.mocked(toast).mockClear();

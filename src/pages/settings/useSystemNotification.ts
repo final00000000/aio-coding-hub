@@ -81,7 +81,6 @@ export function useSystemNotification() {
         body: "这是一条来自 AIO Coding Hub 的系统通知",
       });
       if (!ok) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 

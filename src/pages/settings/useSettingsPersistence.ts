@@ -422,7 +422,6 @@ export function useSettingsPersistence(options: {
       });
 
       if (!nextSettings) {
-        toast("仅在 Tauri Desktop 环境可用");
         revertSettledKeys(desired, changedKeys);
         return;
       }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { logToConsole } from "../consoleLog";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { invokeTauriOrNull } from "../tauriInvoke";
 import {
   requestAttemptLogsByTraceId,
   requestLogGet,
@@ -15,7 +15,6 @@ vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
   return {
     ...actual,
-    hasTauriRuntime: vi.fn(),
     invokeTauriOrNull: vi.fn(),
   };
 });
@@ -29,18 +28,7 @@ vi.mock("../consoleLog", async () => {
 });
 
 describe("services/requestLogs", () => {
-  it("returns null without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    await expect(requestLogsList("claude", 10)).resolves.toBeNull();
-    await expect(requestLogsListAll(20)).resolves.toBeNull();
-    await expect(requestLogGet(1)).resolves.toBeNull();
-
-    expect(logToConsole).not.toHaveBeenCalled();
-  });
-
   it("rethrows invoke errors and logs", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValueOnce(new Error("request logs boom"));
 
     await expect(requestLogsList("claude", 10)).rejects.toThrow("request logs boom");
@@ -55,7 +43,6 @@ describe("services/requestLogs", () => {
   });
 
   it("treats null invoke result as error with runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(null);
 
     await expect(requestLogsList("claude", 10)).rejects.toThrow(
@@ -64,7 +51,6 @@ describe("services/requestLogs", () => {
   });
 
   it("passes request logs command args with stable contract fields", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValue([] as any);
 
     await requestLogsList("claude", 10);

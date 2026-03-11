@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { SkillsPage } from "../SkillsPage";
 import { createTestQueryClient } from "../../test/utils/reactQuery";
-import { clearTauriRuntime, setTauriRuntime } from "../../test/utils/tauriRuntime";
+import { setTauriRuntime } from "../../test/utils/tauriRuntime";
 import { logToConsole } from "../../services/consoleLog";
 import { useWorkspacesListQuery } from "../../query/workspaces";
 
@@ -58,19 +58,6 @@ describe("pages/SkillsPage", () => {
 
     renderWithProviders(<SkillsPage />);
     expect(useWorkspacesListQuery).toHaveBeenCalledWith("codex");
-  });
-
-  it("shows tauri runtime hint when not running in desktop runtime", () => {
-    clearTauriRuntime();
-
-    vi.mocked(useWorkspacesListQuery).mockReturnValue({
-      data: null,
-      isFetching: false,
-      error: null,
-    } as any);
-
-    renderWithProviders(<SkillsPage />);
-    expect(screen.getByText("仅在 Tauri Desktop 环境可用")).toBeInTheDocument();
   });
 
   it("logs and toasts when workspaces query errors", async () => {

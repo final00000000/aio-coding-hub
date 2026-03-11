@@ -91,14 +91,45 @@ function moveTraceToFront(nextTraces: TraceSession[], traceId: string) {
   return nextTraces;
 }
 
+/**
+ * Common upsert logic shared by all three ingest functions.
+ * Creates a new TraceSession if not found, otherwise updates the existing one.
+ */
+function upsertTrace(
+  traceId: string,
+  createSession: (now: number) => TraceSession,
+  updateSession: (existing: TraceSession, now: number) => TraceSession
+) {
+  const now = Date.now();
+  const idx = findTraceIndex(traceId);
+
+  if (idx === -1) {
+    const created = createSession(now);
+    const nextTraces = pruneStaleTraces([created, ...state.traces], now).slice(0, MAX_TRACES);
+    setState({ traces: nextTraces });
+    return;
+  }
+
+  const existing = state.traces[idx];
+  const updated = updateSession(existing, now);
+
+  const nextTraces = pruneStaleTraces(state.traces.slice(), now);
+  const prunedIdx = nextTraces.findIndex((t) => t.trace_id === updated.trace_id);
+  if (prunedIdx !== -1) {
+    nextTraces[prunedIdx] = updated;
+  } else {
+    nextTraces.unshift(updated);
+  }
+  moveTraceToFront(nextTraces, updated.trace_id);
+  setState({ traces: nextTraces.slice(0, MAX_TRACES) });
+}
+
 export function ingestTraceStart(payload: GatewayRequestStartEvent) {
   if (!payload?.trace_id) return;
 
-  const now = Date.now();
-  const idx = findTraceIndex(payload.trace_id);
-
-  if (idx === -1) {
-    const created: TraceSession = {
+  upsertTrace(
+    payload.trace_id,
+    (now) => ({
       trace_id: payload.trace_id,
       cli_key: payload.cli_key,
       method: payload.method,
@@ -108,47 +139,30 @@ export function ingestTraceStart(payload: GatewayRequestStartEvent) {
       first_seen_ms: now,
       last_seen_ms: now,
       attempts: [],
-    };
-
-    const nextTraces = pruneStaleTraces([created, ...state.traces], now).slice(0, MAX_TRACES);
-    setState({ traces: nextTraces });
-    return;
-  }
-
-  const existing = state.traces[idx];
-  const nextRequestedModel = payload.requested_model ?? existing.requested_model ?? null;
-  const shouldReset = Boolean(existing.summary);
-  const updated: TraceSession = {
-    ...existing,
-    cli_key: payload.cli_key,
-    method: payload.method,
-    path: payload.path,
-    query: payload.query ?? null,
-    requested_model: nextRequestedModel,
-    last_seen_ms: now,
-    ...(shouldReset ? { first_seen_ms: now, attempts: [], summary: undefined } : {}),
-  };
-
-  const nextTraces = pruneStaleTraces(state.traces.slice(), now);
-  const prunedIdx = nextTraces.findIndex((t) => t.trace_id === updated.trace_id);
-  if (prunedIdx !== -1) {
-    nextTraces[prunedIdx] = updated;
-  } else {
-    nextTraces.unshift(updated);
-  }
-  moveTraceToFront(nextTraces, updated.trace_id);
-
-  setState({ traces: nextTraces.slice(0, MAX_TRACES) });
+    }),
+    (existing, now) => {
+      const nextRequestedModel = payload.requested_model ?? existing.requested_model ?? null;
+      const shouldReset = Boolean(existing.summary);
+      return {
+        ...existing,
+        cli_key: payload.cli_key,
+        method: payload.method,
+        path: payload.path,
+        query: payload.query ?? null,
+        requested_model: nextRequestedModel,
+        last_seen_ms: now,
+        ...(shouldReset ? { first_seen_ms: now, attempts: [], summary: undefined } : {}),
+      };
+    }
+  );
 }
 
 export function ingestTraceAttempt(payload: GatewayAttemptEvent) {
   if (!payload?.trace_id) return;
 
-  const now = Date.now();
-  const idx = findTraceIndex(payload.trace_id);
-
-  if (idx === -1) {
-    const created: TraceSession = {
+  upsertTrace(
+    payload.trace_id,
+    (now) => ({
       trace_id: payload.trace_id,
       cli_key: payload.cli_key,
       method: payload.method,
@@ -158,44 +172,25 @@ export function ingestTraceAttempt(payload: GatewayAttemptEvent) {
       first_seen_ms: now,
       last_seen_ms: now,
       attempts: [payload],
-    };
-
-    const nextTraces = pruneStaleTraces([created, ...state.traces], now).slice(0, MAX_TRACES);
-    setState({ traces: nextTraces });
-    return;
-  }
-
-  const existing = state.traces[idx];
-  const updated: TraceSession = {
-    ...existing,
-    cli_key: payload.cli_key,
-    method: payload.method,
-    path: payload.path,
-    query: payload.query ?? null,
-    last_seen_ms: now,
-    attempts: upsertAttempt(existing.attempts, payload),
-  };
-
-  const nextTraces = pruneStaleTraces(state.traces.slice(), now);
-  const prunedIdx = nextTraces.findIndex((t) => t.trace_id === updated.trace_id);
-  if (prunedIdx !== -1) {
-    nextTraces[prunedIdx] = updated;
-  } else {
-    nextTraces.unshift(updated);
-  }
-  moveTraceToFront(nextTraces, updated.trace_id);
-
-  setState({ traces: nextTraces.slice(0, MAX_TRACES) });
+    }),
+    (existing, now) => ({
+      ...existing,
+      cli_key: payload.cli_key,
+      method: payload.method,
+      path: payload.path,
+      query: payload.query ?? null,
+      last_seen_ms: now,
+      attempts: upsertAttempt(existing.attempts, payload),
+    })
+  );
 }
 
 export function ingestTraceRequest(payload: GatewayRequestEvent) {
   if (!payload?.trace_id) return;
 
-  const now = Date.now();
-  const idx = findTraceIndex(payload.trace_id);
-
-  if (idx === -1) {
-    const created: TraceSession = {
+  upsertTrace(
+    payload.trace_id,
+    (now) => ({
       trace_id: payload.trace_id,
       cli_key: payload.cli_key,
       method: payload.method,
@@ -206,34 +201,17 @@ export function ingestTraceRequest(payload: GatewayRequestEvent) {
       last_seen_ms: now,
       attempts: [],
       summary: payload,
-    };
-
-    const nextTraces = pruneStaleTraces([created, ...state.traces], now).slice(0, MAX_TRACES);
-    setState({ traces: nextTraces });
-    return;
-  }
-
-  const existing = state.traces[idx];
-  const updated: TraceSession = {
-    ...existing,
-    cli_key: payload.cli_key,
-    method: payload.method,
-    path: payload.path,
-    query: payload.query ?? null,
-    last_seen_ms: now,
-    summary: payload,
-  };
-
-  const nextTraces = pruneStaleTraces(state.traces.slice(), now);
-  const prunedIdx = nextTraces.findIndex((t) => t.trace_id === updated.trace_id);
-  if (prunedIdx !== -1) {
-    nextTraces[prunedIdx] = updated;
-  } else {
-    nextTraces.unshift(updated);
-  }
-  moveTraceToFront(nextTraces, updated.trace_id);
-
-  setState({ traces: nextTraces.slice(0, MAX_TRACES) });
+    }),
+    (existing, now) => ({
+      ...existing,
+      cli_key: payload.cli_key,
+      method: payload.method,
+      path: payload.path,
+      query: payload.query ?? null,
+      last_seen_ms: now,
+      summary: payload,
+    })
+  );
 }
 
 export function useTraceStore(): TraceStoreSnapshot {

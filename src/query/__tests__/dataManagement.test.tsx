@@ -19,16 +19,6 @@ vi.mock("../../services/dataManagement", async () => {
 });
 
 describe("query/dataManagement", () => {
-  it("does not call dbDiskUsageGet without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useDbDiskUsageQuery(), { wrapper });
-    await Promise.resolve();
-
-    expect(dbDiskUsageGet).not.toHaveBeenCalled();
-  });
-
   it("calls dbDiskUsageGet with tauri runtime", async () => {
     setTauriRuntime();
 

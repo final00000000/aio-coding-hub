@@ -423,7 +423,6 @@ export function McpServerDialog({
       });
 
       if (!next) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 

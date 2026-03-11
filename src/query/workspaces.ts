@@ -11,14 +11,13 @@ import {
   type WorkspaceSummary,
   type WorkspacesListResult,
 } from "../services/workspaces";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { workspacesKeys } from "./keys";
 
 export function useWorkspacesListQuery(cliKey: CliKey, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: workspacesKeys.list(cliKey),
     queryFn: () => workspacesList(cliKey),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -33,7 +32,7 @@ export function useWorkspacePreviewQuery(
       if (workspaceId == null) return null;
       return workspacePreview(workspaceId);
     },
-    enabled: hasTauriRuntime() && workspaceId != null && (options?.enabled ?? true),
+    enabled: workspaceId != null && (options?.enabled ?? true),
     placeholderData: keepPreviousData,
   });
 }

@@ -1,7 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { tauriInvoke } from "../../test/mocks/tauri";
-import { setTauriRuntime } from "../../test/utils/tauriRuntime";
 
 async function importFreshCacheAnomalyMonitor() {
   vi.resetModules();
@@ -97,7 +96,6 @@ describe("services/cacheAnomalyMonitor", () => {
   });
 
   it("covers ingest early-return and normalization branches without emitting alerts", async () => {
-    setTauriRuntime();
     vi.useFakeTimers();
     const baseTimeMs = 1_700_000_000_000;
     vi.setSystemTime(baseTimeMs);
@@ -308,7 +306,6 @@ describe("services/cacheAnomalyMonitor", () => {
   });
 
   it("disables monitor when self-check detects inconsistent window sums", async () => {
-    setTauriRuntime();
     vi.useFakeTimers();
 
     const {
@@ -370,7 +367,6 @@ describe("services/cacheAnomalyMonitor", () => {
   });
 
   it("handles codex effective input and provider/model fallbacks", async () => {
-    setTauriRuntime();
     vi.useFakeTimers();
     vi.setSystemTime(1_700_000_000_000);
 
@@ -431,7 +427,6 @@ describe("services/cacheAnomalyMonitor", () => {
   });
 
   it("emits alert for creation-without-read and handles notice_send failure", async () => {
-    setTauriRuntime();
     vi.useFakeTimers();
     const baseTimeMs = 1_700_000_000_000;
     vi.setSystemTime(baseTimeMs);
@@ -452,8 +447,6 @@ describe("services/cacheAnomalyMonitor", () => {
 
     const core = await import("@tauri-apps/api/core");
     expect(core.invoke).toBe(tauriInvoke);
-    const { hasTauriRuntime } = await import("../tauriInvoke");
-    expect(hasTauriRuntime()).toBe(true);
 
     setCacheAnomalyMonitorEnabled(true);
 
@@ -494,7 +487,6 @@ describe("services/cacheAnomalyMonitor", () => {
   });
 
   it("skips ingesting requests for non-caching models (haiku)", async () => {
-    setTauriRuntime();
     vi.useFakeTimers();
     vi.setSystemTime(1_700_000_000_000);
 
@@ -524,7 +516,6 @@ describe("services/cacheAnomalyMonitor", () => {
   });
 
   it("emits alert for high cache create share", async () => {
-    setTauriRuntime();
     vi.useFakeTimers();
     const baseTimeMs = 1_700_000_000_000;
     vi.setSystemTime(baseTimeMs);
@@ -573,7 +564,6 @@ describe("services/cacheAnomalyMonitor", () => {
   });
 
   it("emits alert for create/read imbalance", async () => {
-    setTauriRuntime();
     vi.useFakeTimers();
     const baseTimeMs = 1_700_000_000_000;
     vi.setSystemTime(baseTimeMs);
@@ -621,7 +611,6 @@ describe("services/cacheAnomalyMonitor", () => {
   });
 
   it("emits alert for hit-rate big drop", async () => {
-    setTauriRuntime();
     vi.useFakeTimers();
     const baseTimeMs = 1_700_000_000_000;
     vi.setSystemTime(baseTimeMs);

@@ -16,16 +16,6 @@ vi.mock("../../services/providerLimitUsage", async () => {
 });
 
 describe("query/providerLimitUsage", () => {
-  it("does not call providerLimitUsageV1 without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useProviderLimitUsageV1Query(null), { wrapper });
-    await Promise.resolve();
-
-    expect(providerLimitUsageV1).not.toHaveBeenCalled();
-  });
-
   it("calls providerLimitUsageV1 with tauri runtime", async () => {
     setTauriRuntime();
 

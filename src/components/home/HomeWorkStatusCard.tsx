@@ -41,9 +41,7 @@ export function HomeWorkStatusCard({
       {sortModesLoading ? (
         <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">加载中…</div>
       ) : sortModesAvailable === false ? (
-        <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-          仅在 Tauri Desktop 环境可用
-        </div>
+        <div className="mt-2 text-sm text-slate-600 dark:text-slate-400">数据不可用</div>
       ) : (
         <div className="mt-3 space-y-2.5">
           {CLIS.map((cli) => {

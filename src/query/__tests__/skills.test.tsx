@@ -23,7 +23,7 @@ import {
   skillsPathsGet,
 } from "../../services/skills";
 import { createQueryWrapper, createTestQueryClient } from "../../test/utils/reactQuery";
-import { clearTauriRuntime, setTauriRuntime } from "../../test/utils/tauriRuntime";
+import { setTauriRuntime } from "../../test/utils/tauriRuntime";
 import { skillsKeys } from "../keys";
 import {
   useSkillImportLocalMutation,
@@ -65,18 +65,7 @@ vi.mock("../../services/skills", async () => {
 
 describe("query/skills", () => {
   beforeEach(() => {
-    clearTauriRuntime();
     vi.clearAllMocks();
-  });
-
-  it("does not call skillReposList without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useSkillReposListQuery(), { wrapper });
-    await Promise.resolve();
-
-    expect(skillReposList).not.toHaveBeenCalled();
   });
 
   it("does not call skillReposList when options.enabled=false", async () => {

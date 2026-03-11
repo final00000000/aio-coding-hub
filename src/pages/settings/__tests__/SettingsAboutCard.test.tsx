@@ -6,7 +6,6 @@ describe("pages/settings/SettingsAboutCard", () => {
   it("renders placeholder when about is null", () => {
     render(<SettingsAboutCard about={null} />);
     expect(screen.getByText("关于应用")).toBeInTheDocument();
-    expect(screen.getByText("仅在 Tauri Desktop 环境可用。")).toBeInTheDocument();
   });
 
   it("renders about information when available", () => {

@@ -119,9 +119,7 @@ describe("pages/providers/SortModesView", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Work" })).toBeInTheDocument());
 
     fireEvent.click(screen.getByRole("button", { name: "Work" }));
-    await waitFor(() =>
-      expect(screen.getAllByText("仅在 Tauri Desktop 环境可用").length).toBeGreaterThan(0)
-    );
+    await waitFor(() => expect(vi.mocked(sortModeProvidersList)).toHaveBeenCalledTimes(1));
 
     // 2) cancellation: reject after switching away; catch should skip due to cancelled
     let rejectProviders: (err: Error) => void = () => {
@@ -286,26 +284,6 @@ describe("pages/providers/SortModesView", () => {
     );
   });
 
-  it("shows tauri-only state when sort modes APIs return null", async () => {
-    vi.mocked(toast).mockClear();
-
-    vi.mocked(sortModesList).mockResolvedValue(null as any);
-    vi.mocked(sortModeActiveList).mockResolvedValue(null as any);
-
-    renderWithQueryClient(
-      <SortModesView
-        activeCli="claude"
-        setActiveCli={vi.fn()}
-        providers={[]}
-        providersLoading={false}
-      />
-    );
-
-    await waitFor(() =>
-      expect(screen.getByText("仅在 Tauri Desktop 环境可用")).toBeInTheDocument()
-    );
-  });
-
   it("covers create/rename/delete null + error branches and delete dialog onOpenChange gating", async () => {
     vi.mocked(toast).mockClear();
     sortableIsDragging = false;
@@ -334,15 +312,13 @@ describe("pages/providers/SortModesView", () => {
 
     await waitFor(() => expect(screen.getByRole("button", { name: "Work" })).toBeInTheDocument());
 
-    // create: null -> tauri-only toast
+    // create: null -> no-op
     vi.mocked(sortModeCreate).mockResolvedValueOnce(null as any);
     fireEvent.click(screen.getByRole("button", { name: "新建排序模板" }));
     const createDialog = within(screen.getByRole("dialog"));
     fireEvent.change(createDialog.getByPlaceholderText("工作"), { target: { value: "Life" } });
     fireEvent.click(createDialog.getByRole("button", { name: "创建" }));
-    await waitFor(() =>
-      expect(vi.mocked(toast)).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用")
-    );
+    await waitFor(() => expect(vi.mocked(sortModeCreate)).toHaveBeenCalledTimes(1));
 
     // create: throws -> error toast
     vi.mocked(sortModeCreate).mockRejectedValueOnce(new Error("boom"));
@@ -364,13 +340,11 @@ describe("pages/providers/SortModesView", () => {
     fireEvent.click(renameDialog.getByRole("button", { name: "保存" }));
     await waitFor(() => expect(vi.mocked(toast)).toHaveBeenCalledWith("模式名称不能为空"));
 
-    // rename: null -> tauri-only toast
+    // rename: null -> no-op
     vi.mocked(sortModeRename).mockResolvedValueOnce(null as any);
     fireEvent.change(renameDialog.getByRole("textbox"), { target: { value: "Work2" } });
     fireEvent.click(renameDialog.getByRole("button", { name: "保存" }));
-    await waitFor(() =>
-      expect(vi.mocked(toast)).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用")
-    );
+    await waitFor(() => expect(vi.mocked(sortModeRename)).toHaveBeenCalledTimes(1));
 
     // rename: throws -> error toast
     vi.mocked(sortModeRename).mockRejectedValueOnce(new Error("boom"));
@@ -384,14 +358,12 @@ describe("pages/providers/SortModesView", () => {
     fireEvent.click(document.querySelector(".bg-black\\/30") as HTMLElement);
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
 
-    // delete: ok=false -> tauri-only toast
+    // delete: ok=false -> no-op
     fireEvent.click(screen.getByRole("button", { name: "删除" }));
     const deleteDialog = within(screen.getByRole("dialog"));
     vi.mocked(sortModeDelete).mockResolvedValueOnce(false as any);
     fireEvent.click(deleteDialog.getByRole("button", { name: "确认删除" }));
-    await waitFor(() =>
-      expect(vi.mocked(toast)).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用")
-    );
+    await waitFor(() => expect(vi.mocked(sortModeDelete)).toHaveBeenCalledTimes(1));
 
     // delete: throws -> error toast
     vi.mocked(sortModeDelete).mockRejectedValueOnce(new Error("boom"));
@@ -493,12 +465,9 @@ describe("pages/providers/SortModesView", () => {
     // pointerdown handler stops propagation (coverage)
     fireEvent.pointerDown(screen.getAllByRole("button", { name: "移除" })[0]!);
 
-    // 1) persist returns null -> toast and revert
+    // 1) persist returns null -> revert
     fireEvent.click(screen.getAllByRole("button", { name: "移除" })[0]!);
     await waitFor(() => expect(vi.mocked(sortModeProvidersSetOrder)).toHaveBeenCalledTimes(1));
-    await waitFor(() =>
-      expect(vi.mocked(toast)).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用")
-    );
     await waitFor(() => expect(screen.getAllByRole("button", { name: "移除" })).toHaveLength(2));
 
     // 2) persist throws -> toast and revert

@@ -86,7 +86,6 @@ describe("pages/settings/useSystemNotification", () => {
     await act(async () => {
       await result.current.sendSystemNotificationTest();
     });
-    expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用");
 
     await act(async () => {
       await result.current.sendSystemNotificationTest();

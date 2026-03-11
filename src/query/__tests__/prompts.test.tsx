@@ -25,16 +25,6 @@ vi.mock("../../services/prompts", async () => {
 });
 
 describe("query/prompts", () => {
-  it("does not call promptsList without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => usePromptsListQuery(1), { wrapper });
-    await Promise.resolve();
-
-    expect(promptsList).not.toHaveBeenCalled();
-  });
-
   it("calls promptsList with tauri runtime", async () => {
     setTauriRuntime();
 

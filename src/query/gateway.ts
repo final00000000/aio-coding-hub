@@ -8,7 +8,6 @@ import {
   type GatewayProviderCircuitStatus,
 } from "../services/gateway";
 import type { CliKey } from "../services/providers";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { gatewayKeys } from "./keys";
 
 export function useGatewayStatusQuery(options?: {
@@ -18,7 +17,7 @@ export function useGatewayStatusQuery(options?: {
   return useQuery({
     queryKey: gatewayKeys.status(),
     queryFn: () => gatewayStatus(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
     refetchInterval: options?.refetchIntervalMs ?? false,
     refetchIntervalInBackground: true,
@@ -29,7 +28,7 @@ export function useGatewayCircuitStatusQuery(cliKey: CliKey) {
   return useQuery({
     queryKey: gatewayKeys.circuitStatus(cliKey),
     queryFn: () => gatewayCircuitStatus(cliKey),
-    enabled: hasTauriRuntime(),
+    enabled: true,
     placeholderData: keepPreviousData,
   });
 }
@@ -55,7 +54,7 @@ export function useGatewaySessionsListQuery(
   return useQuery({
     queryKey: gatewayKeys.sessionsList(limit),
     queryFn: () => gatewaySessionsList(limit),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
     refetchInterval: options?.refetchIntervalMs ?? false,
     refetchIntervalInBackground: true,

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { logToConsole } from "../services/consoleLog";
 import type { CliKey } from "../services/providers";
@@ -18,6 +18,8 @@ const DEFAULT_TOGGLING: Record<CliKey, boolean> = {
 
 export function useCliProxy() {
   const [toggling, setToggling] = useState<Record<CliKey, boolean>>(DEFAULT_TOGGLING);
+  const togglingRef = useRef(toggling);
+  togglingRef.current = toggling;
 
   const statusQuery = useCliProxyStatusAllQuery();
   const setEnabledMutation = useCliProxySetEnabledMutation();
@@ -41,7 +43,7 @@ export function useCliProxy() {
 
   const setCliProxyEnabled = useCallback(
     (cliKey: CliKey, next: boolean) => {
-      if (toggling[cliKey]) return;
+      if (togglingRef.current[cliKey]) return;
 
       setToggling((cur) => ({ ...cur, [cliKey]: true }));
 
@@ -49,7 +51,6 @@ export function useCliProxy() {
         try {
           const res = await setEnabledMutation.mutateAsync({ cliKey, enabled: next });
           if (!res) {
-            toast("仅在 Tauri Desktop 环境可用");
             return;
           }
 
@@ -76,7 +77,7 @@ export function useCliProxy() {
         }
       })();
     },
-    [setEnabledMutation, statusQuery, toggling]
+    [setEnabledMutation, statusQuery]
   );
 
   return {

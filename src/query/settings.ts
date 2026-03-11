@@ -11,14 +11,13 @@ import {
   settingsGatewayRectifierSet,
   type GatewayRectifierSettingsPatch,
 } from "../services/settingsGatewayRectifier";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { settingsKeys } from "./keys";
 
 export function useSettingsQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: settingsKeys.get(),
     queryFn: () => settingsGet(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

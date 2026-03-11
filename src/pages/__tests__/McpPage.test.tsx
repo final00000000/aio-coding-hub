@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { McpPage } from "../McpPage";
 import { createTestQueryClient } from "../../test/utils/reactQuery";
-import { clearTauriRuntime, setTauriRuntime } from "../../test/utils/tauriRuntime";
+import { setTauriRuntime } from "../../test/utils/tauriRuntime";
 import { useWorkspacesListQuery } from "../../query/workspaces";
 
 vi.mock("../mcp/McpServersView", () => ({
@@ -28,19 +28,6 @@ function renderWithProviders(element: ReactElement) {
 }
 
 describe("pages/McpPage", () => {
-  it("shows tauri runtime hint when not running in desktop runtime", () => {
-    clearTauriRuntime();
-
-    vi.mocked(useWorkspacesListQuery).mockReturnValue({
-      data: null,
-      isFetching: false,
-      error: null,
-    } as any);
-
-    renderWithProviders(<McpPage />);
-    expect(screen.getByText("仅在 Tauri Desktop 环境可用")).toBeInTheDocument();
-  });
-
   it("renders MCP view when active workspace exists", () => {
     setTauriRuntime();
 

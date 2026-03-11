@@ -6,7 +6,7 @@ import type { ReactElement } from "react";
 import { toast } from "sonner";
 import { SkillsMarketPage } from "../SkillsMarketPage";
 import { createTestQueryClient } from "../../test/utils/reactQuery";
-import { clearTauriRuntime, setTauriRuntime } from "../../test/utils/tauriRuntime";
+import { setTauriRuntime } from "../../test/utils/tauriRuntime";
 import { logToConsole } from "../../services/consoleLog";
 import { useWorkspacesListQuery } from "../../query/workspaces";
 import {
@@ -419,18 +419,15 @@ describe("pages/SkillsMarketPage", () => {
     );
 
     resolveUpsert(null);
-    await waitFor(() => {
-      expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用");
-    });
+    await waitFor(() => expect(repoUpsert.mutateAsync).toHaveBeenCalledTimes(1));
 
-    // delete repo: first attempt returns false (toast), second succeeds
+    // delete repo: first attempt returns false (silent return), second succeeds
     const deleteButtons = within(repoDialog).getAllByRole("button", { name: "删除" });
     fireEvent.click(deleteButtons[0]);
     const deleteDialog = getDialogByTitle("删除仓库");
 
     fireEvent.click(within(deleteDialog).getByRole("button", { name: "确认删除" }));
     await waitFor(() => expect(repoDelete.mutateAsync).toHaveBeenCalledTimes(1));
-    expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用");
 
     fireEvent.click(within(deleteDialog).getByRole("button", { name: "确认删除" }));
     await waitFor(() => expect(repoDelete.mutateAsync).toHaveBeenCalledTimes(2));
@@ -439,8 +436,8 @@ describe("pages/SkillsMarketPage", () => {
     localeSpy.mockRestore();
   });
 
-  it("covers refresh/install null + error + tauri-only branches and localStorage failures", async () => {
-    clearTauriRuntime();
+  it("covers refresh/install null + error branches and localStorage failures", async () => {
+    setTauriRuntime();
     navigateMock.mockClear();
 
     const getItemSpy = vi.spyOn(window.localStorage, "getItem").mockImplementation(() => {
@@ -495,12 +492,15 @@ describe("pages/SkillsMarketPage", () => {
 
     const phase1 = renderWithProviders(<SkillsMarketPage />);
 
+    // discover returns null => silent return
     fireEvent.click(screen.getByRole("button", { name: "刷新发现" }));
-    await waitFor(() => expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用"));
+    await waitFor(() => expect(discover.mutateAsync).toHaveBeenCalledTimes(1));
 
+    // discover rejects => error toast
     fireEvent.click(screen.getByRole("button", { name: "刷新发现" }));
-    await waitFor(() => expect(toast).toHaveBeenCalled());
+    await waitFor(() => expect(discover.mutateAsync).toHaveBeenCalledTimes(2));
 
+    // install without active workspace => workspace-missing toast
     fireEvent.click(screen.getByRole("button", { name: "安装到 Claude Code" }));
     await waitFor(() =>
       expect(toast).toHaveBeenCalledWith(
@@ -516,19 +516,18 @@ describe("pages/SkillsMarketPage", () => {
     // writeCliToStorage catches localStorage.setItem failures
     fireEvent.click(screen.getByRole("tab", { name: "Codex" }));
 
-    // with workspace present but no tauri runtime -> toast and return
+    // install returns null => silent return
     fireEvent.click(screen.getByRole("button", { name: "安装到 Codex" }));
-    await waitFor(() => expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用"));
+    await waitFor(() => expect(install.mutateAsync).toHaveBeenCalledTimes(1));
 
     phase1.unmount();
     getItemSpy.mockRestore();
     setItemSpy.mockRestore();
 
-    // phase2: tauri runtime + workspace present => exercise install null + error branches
+    // phase2: exercise install error branch
     try {
       window.localStorage.removeItem("skills.activeCli");
     } catch {}
-    setTauriRuntime();
     vi.mocked(toast).mockClear();
     vi.mocked(useWorkspacesListQuery).mockReturnValue({
       data: { active_id: 7 },
@@ -537,10 +536,9 @@ describe("pages/SkillsMarketPage", () => {
 
     renderWithProviders(<SkillsMarketPage />);
 
+    // install rejects => error toast
     fireEvent.click(screen.getByRole("button", { name: "安装到 Claude Code" }));
-    await waitFor(() => expect(toast).toHaveBeenCalledWith("仅在 Tauri Desktop 环境可用"));
-
-    fireEvent.click(screen.getByRole("button", { name: "安装到 Claude Code" }));
+    await waitFor(() => expect(install.mutateAsync).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(toast).toHaveBeenCalled());
   });
 });

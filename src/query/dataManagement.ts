@@ -5,14 +5,13 @@ import {
   type ClearRequestLogsResult,
   type DbDiskUsage,
 } from "../services/dataManagement";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { dataManagementKeys, requestLogsKeys } from "./keys";
 
 export function useDbDiskUsageQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: dataManagementKeys.dbDiskUsage(),
     queryFn: () => dbDiskUsageGet(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

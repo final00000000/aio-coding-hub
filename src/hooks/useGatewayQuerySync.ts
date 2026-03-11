@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { gatewayKeys, requestLogsKeys, usageKeys } from "../query/keys";
 import { gatewayEventNames, subscribeGatewayEvent } from "../services/gatewayEventBus";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 
 const CIRCUIT_INVALIDATE_THROTTLE_MS = 500;
 const STATUS_INVALIDATE_THROTTLE_MS = 300;
@@ -16,8 +15,6 @@ export function useGatewayQuerySync() {
   const requestTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (!hasTauriRuntime()) return;
-
     let cancelled = false;
 
     const invalidateCircuits = () => {

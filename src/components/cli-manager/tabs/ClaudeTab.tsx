@@ -476,7 +476,7 @@ export function CliManagerClaudeTab({
 
         {claudeAvailable === "unavailable" ? (
           <div className="text-sm text-slate-600 dark:text-slate-400 text-center py-8">
-            仅在 Tauri Desktop 环境可用
+            数据不可用
           </div>
         ) : !claudeSettings ? (
           <div className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">

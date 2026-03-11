@@ -13,7 +13,6 @@ import {
   useUsageProviderCacheRateTrendV1Query,
   useUsageSummaryV2Query,
 } from "../../query/usage";
-import { hasTauriRuntime } from "../../services/tauriInvoke";
 import { formatUnknownError } from "../../utils/errors";
 import { LEADERBOARD_LIMIT } from "./constants";
 import type { UsageTableTab } from "./types";
@@ -63,7 +62,7 @@ function useUsagePageQueryInput({
   customApplied,
   bounds,
 }: Pick<UsagePageDataModelArgs, "period" | "cliKey" | "customApplied" | "bounds">) {
-  const tauriAvailable = hasTauriRuntime();
+  const tauriAvailable = true;
   const shouldLoad = period !== "custom" || customApplied != null;
   const customPending = period === "custom" && !customApplied;
   const input = { startTs: bounds.startTs, endTs: bounds.endTs, cliKey: toCliKeyOrNull(cliKey) };

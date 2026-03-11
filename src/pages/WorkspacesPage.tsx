@@ -262,7 +262,6 @@ export function WorkspacesPage() {
         cloneFromActive: createMode === "clone_active",
       });
       if (!created) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 
@@ -295,7 +294,6 @@ export function WorkspacesPage() {
         name,
       });
       if (!next) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       toast("已重命名");
@@ -320,7 +318,6 @@ export function WorkspacesPage() {
         workspaceId: deleteTarget.id,
       });
       if (!ok) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       toast("已删除");
@@ -349,7 +346,6 @@ export function WorkspacesPage() {
         workspaceId: switchTarget.id,
       });
       if (!next) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 
@@ -373,7 +369,6 @@ export function WorkspacesPage() {
     try {
       const next = await applyMutation.mutateAsync({ cliKey: activeCli, workspaceId });
       if (!next) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 

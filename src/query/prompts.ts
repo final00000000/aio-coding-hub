@@ -6,7 +6,6 @@ import {
   promptsList,
   type PromptSummary,
 } from "../services/prompts";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { promptsKeys } from "./keys";
 
 export function usePromptsListQuery(workspaceId: number | null, options?: { enabled?: boolean }) {
@@ -16,7 +15,7 @@ export function usePromptsListQuery(workspaceId: number | null, options?: { enab
       if (workspaceId == null) return null;
       return promptsList(workspaceId);
     },
-    enabled: hasTauriRuntime() && workspaceId != null && (options?.enabled ?? true),
+    enabled: workspaceId != null && (options?.enabled ?? true),
     placeholderData: keepPreviousData,
   });
 }

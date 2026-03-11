@@ -1,25 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
 import { logToConsole } from "../consoleLog";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { invokeTauriOrNull } from "../tauriInvoke";
 import {
   cliManagerClaudeEnvSet,
   cliManagerClaudeInfoGet,
   cliManagerClaudeSettingsGet,
   cliManagerClaudeSettingsSet,
-  cliManagerCodexConfigGet,
   cliManagerCodexConfigSet,
   cliManagerCodexConfigTomlGet,
   cliManagerCodexConfigTomlSet,
   cliManagerCodexConfigTomlValidate,
   cliManagerCodexInfoGet,
-  cliManagerGeminiInfoGet,
 } from "../cliManager";
 
 vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
   return {
     ...actual,
-    hasTauriRuntime: vi.fn(),
     invokeTauriOrNull: vi.fn(),
   };
 });
@@ -33,16 +30,7 @@ vi.mock("../consoleLog", async () => {
 });
 
 describe("services/cliManager", () => {
-  it("returns null without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    await expect(cliManagerClaudeInfoGet()).resolves.toBeNull();
-    await expect(cliManagerCodexConfigGet()).resolves.toBeNull();
-    await expect(cliManagerGeminiInfoGet()).resolves.toBeNull();
-  });
-
   it("rethrows invoke errors and logs", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValueOnce(new Error("cli manager boom"));
 
     await expect(cliManagerClaudeInfoGet()).rejects.toThrow("cli manager boom");
@@ -57,7 +45,6 @@ describe("services/cliManager", () => {
   });
 
   it("treats null invoke result as error with runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(null);
 
     await expect(cliManagerClaudeInfoGet()).rejects.toThrow(
@@ -66,7 +53,6 @@ describe("services/cliManager", () => {
   });
 
   it("keeps argument mapping unchanged", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValue({} as any);
 
     await cliManagerCodexInfoGet();

@@ -6,11 +6,10 @@ import {
   requestLogsListAll,
   type RequestLogSummary,
 } from "../services/requestLogs";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { requestLogsKeys } from "./keys";
 
 function isRequestLogsQueryEnabled(enabled: boolean | undefined) {
-  return hasTauriRuntime() && (enabled ?? true);
+  return enabled ?? true;
 }
 
 function requestLogCreatedAtMs(log: Pick<RequestLogSummary, "created_at" | "created_at_ms">) {
@@ -69,8 +68,6 @@ export function useRequestLogsIncrementalPollQuery(
   return useQuery({
     queryKey: requestLogsKeys.pollAfterIdAll(limit),
     queryFn: async () => {
-      if (!hasTauriRuntime()) return null;
-
       const prev = queryClient.getQueryData<RequestLogSummary[] | null>(
         requestLogsKeys.listAll(limit)
       );
@@ -116,8 +113,6 @@ export function useRequestLogsIncrementalRefreshMutation(limit: number) {
 
   return useMutation({
     mutationFn: async () => {
-      if (!hasTauriRuntime()) return null;
-
       const prev = queryClient.getQueryData<RequestLogSummary[]>(requestLogsKeys.listAll(limit));
       const cursorId = prev?.length ? computeRequestLogsCursorId(prev) : 0;
 
@@ -157,7 +152,7 @@ export function useRequestLogDetailQuery(logId: number | null) {
       if (logId == null) return null;
       return requestLogGet(logId);
     },
-    enabled: hasTauriRuntime() && logId != null,
+    enabled: logId != null,
     placeholderData: keepPreviousData,
   });
 }
@@ -169,7 +164,7 @@ export function useRequestAttemptLogsByTraceIdQuery(traceId: string | null, limi
       if (!traceId) return null;
       return requestAttemptLogsByTraceId(traceId, limit);
     },
-    enabled: hasTauriRuntime() && Boolean(traceId),
+    enabled: Boolean(traceId),
     placeholderData: keepPreviousData,
   });
 }

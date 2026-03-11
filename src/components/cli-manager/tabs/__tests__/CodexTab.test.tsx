@@ -156,7 +156,7 @@ describe("components/cli-manager/tabs/CodexTab", () => {
         persistCodexConfigToml={vi.fn().mockResolvedValue(false)}
       />
     );
-    expect(screen.getByText("仅在 Tauri Desktop 环境可用")).toBeInTheDocument();
+    expect(screen.getByText("数据不可用")).toBeInTheDocument();
   });
 
   it("treats service_tier=fast as enabled fast mode", () => {

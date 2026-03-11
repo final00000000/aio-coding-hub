@@ -32,7 +32,7 @@ describe("components/home/HomeWorkStatusCard", () => {
         onSetCliProxyEnabled={vi.fn()}
       />
     );
-    expect(screen.getByText("仅在 Tauri Desktop 环境可用")).toBeInTheDocument();
+    expect(screen.getByText("数据不可用")).toBeInTheDocument();
   });
 
   it("drives proxy toggles and active mode selection", () => {

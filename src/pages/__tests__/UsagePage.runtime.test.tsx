@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import type { ReactElement } from "react";
 import { UsagePage } from "../UsagePage";
 import { createTestQueryClient } from "../../test/utils/reactQuery";
-import { clearTauriRuntime } from "../../test/utils/tauriRuntime";
+import { setTauriRuntime } from "../../test/utils/tauriRuntime";
 import { useCustomDateRange } from "../../hooks/useCustomDateRange";
 import {
   useUsageLeaderboardV2Query,
@@ -42,8 +42,8 @@ function renderWithProviders(element: ReactElement) {
 }
 
 describe("pages/UsagePage (runtime)", () => {
-  it("shows tauri runtime hint when not running in desktop runtime", () => {
-    clearTauriRuntime();
+  it("renders usage page in tauri runtime", () => {
+    setTauriRuntime();
 
     vi.mocked(useCustomDateRange).mockReturnValue({
       customStartDate: "",
@@ -77,6 +77,7 @@ describe("pages/UsagePage (runtime)", () => {
     } as any);
 
     renderWithProviders(<UsagePage />);
-    expect(screen.getByText(/未检测到 Tauri Runtime/)).toBeInTheDocument();
+    // Page should render without the old "未检测到 Tauri Runtime" hint
+    expect(screen.queryByText(/未检测到 Tauri Runtime/)).not.toBeInTheDocument();
   });
 });

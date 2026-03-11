@@ -10,7 +10,6 @@ import {
   escapeShellArg,
 } from "../services/cliSessions";
 import { copyText } from "../services/clipboard";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   useCliSessionsProjectsListQuery,
@@ -84,14 +83,13 @@ function compareSession(
 }
 
 export function SessionsProjectPage() {
-  const tauriRuntime = hasTauriRuntime();
   const params = useParams();
   const navigate = useNavigate();
 
   const source = normalizeSource(params.source);
   const projectId = params.projectId || "";
   const safeSource: CliSessionsSource = source ?? "claude";
-  const enabled = tauriRuntime && source != null && projectId.trim().length > 0;
+  const enabled = source != null && projectId.trim().length > 0;
 
   const projectsQuery = useCliSessionsProjectsListQuery(safeSource);
   const sessionsQuery = useCliSessionsSessionsListQuery(safeSource, projectId, { enabled });
@@ -134,16 +132,6 @@ export function SessionsProjectPage() {
     estimateSize: () => 100,
     overscan: 10,
   });
-
-  if (!tauriRuntime) {
-    return (
-      <EmptyState
-        title="该功能仅在桌面端可用"
-        description="需要在 Tauri 运行时读取本地会话文件。"
-        variant="dashed"
-      />
-    );
-  }
 
   if (source == null) {
     return (

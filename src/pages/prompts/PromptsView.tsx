@@ -118,7 +118,6 @@ export function PromptsView({ workspaceId, cliKey, isActiveWorkspace = true }: P
       });
 
       if (!next) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 
@@ -144,7 +143,6 @@ export function PromptsView({ workspaceId, cliKey, isActiveWorkspace = true }: P
     try {
       const next = await toggleMutation.mutateAsync({ promptId: target.id, enabled });
       if (!next) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
 
@@ -180,7 +178,6 @@ export function PromptsView({ workspaceId, cliKey, isActiveWorkspace = true }: P
     try {
       const ok = await deleteMutation.mutateAsync(target.id);
       if (!ok) {
-        toast("仅在 Tauri Desktop 环境可用");
         return;
       }
       logToConsole("info", "删除提示词", { id: target.id, workspace_id: workspaceId });

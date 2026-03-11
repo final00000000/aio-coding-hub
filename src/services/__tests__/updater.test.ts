@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { tauriInvoke } from "../../test/mocks/tauri";
-import { clearTauriRuntime, setTauriRuntime } from "../../test/utils/tauriRuntime";
+import { setTauriRuntime } from "../../test/utils/tauriRuntime";
 
 describe("services/updater", () => {
   it("parseUpdaterCheckResult rejects invalid values and keeps optional fields", async () => {
@@ -32,10 +32,6 @@ describe("services/updater", () => {
   it("updaterCheck parses tauri result", async () => {
     const { updaterCheck } = await import("../updater");
 
-    clearTauriRuntime();
-    await updaterCheck();
-    expect(tauriInvoke).not.toHaveBeenCalled();
-
     setTauriRuntime();
 
     vi.mocked(tauriInvoke).mockResolvedValueOnce(false as any);
@@ -53,9 +49,6 @@ describe("services/updater", () => {
 
   it("updaterDownloadAndInstall maps events and supports timeout option", async () => {
     const { updaterDownloadAndInstall } = await import("../updater");
-
-    clearTauriRuntime();
-    expect(await updaterDownloadAndInstall({ rid: 1 })).toBeNull();
 
     setTauriRuntime();
 

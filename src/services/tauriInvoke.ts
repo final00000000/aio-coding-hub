@@ -4,12 +4,13 @@ export type InvokeTauriOptions = {
   timeoutMs?: number | null;
 };
 
+/**
+ * Always returns true — the app runs exclusively inside Tauri Desktop.
+ * Kept as a function for backward compatibility; callers will be cleaned up incrementally.
+ * @deprecated No longer needed; Tauri runtime is always present.
+ */
 export function hasTauriRuntime() {
-  // __TAURI_INTERNALS__ is injected by the Tauri runtime at window level; no TS declaration exists.
-  return (
-    typeof window !== "undefined" &&
-    typeof (window as unknown as Record<string, unknown>).__TAURI_INTERNALS__ === "object"
-  );
+  return true;
 }
 
 function normalizeTimeoutMs(value: number | null | undefined) {
@@ -23,7 +24,6 @@ export async function invokeTauriOrNull<T>(
   args?: Record<string, unknown>,
   options?: InvokeTauriOptions
 ): Promise<T | null> {
-  if (!hasTauriRuntime()) return null;
   const { invoke } = await import("@tauri-apps/api/core");
   const invokePromise = invoke<T>(cmd, args);
   const timeoutMs = normalizeTimeoutMs(options?.timeoutMs);

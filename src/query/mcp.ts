@@ -14,7 +14,6 @@ import {
   type McpServerSummary,
   type McpTransport,
 } from "../services/mcp";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { mcpKeys } from "./keys";
 
 export function useMcpServersListQuery(
@@ -27,7 +26,7 @@ export function useMcpServersListQuery(
       if (!workspaceId) return null;
       return mcpServersList(workspaceId);
     },
-    enabled: hasTauriRuntime() && Boolean(workspaceId) && (options?.enabled ?? true),
+    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
     placeholderData: keepPreviousData,
   });
 }

@@ -38,16 +38,6 @@ vi.mock("../../services/sortModes", async () => {
 });
 
 describe("query/sortModes", () => {
-  it("does not call sortModesList without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useSortModesListQuery(), { wrapper });
-    await Promise.resolve();
-
-    expect(sortModesList).not.toHaveBeenCalled();
-  });
-
   it("calls sortModesList and sortModeActiveList with tauri runtime", async () => {
     setTauriRuntime();
 

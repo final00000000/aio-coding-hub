@@ -8,14 +8,13 @@ import {
   type CliKey,
   type ProviderSummary,
 } from "../services/providers";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { providersKeys } from "./keys";
 
 export function useProvidersListQuery(cliKey: CliKey, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: providersKeys.list(cliKey),
     queryFn: () => providersList(cliKey),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

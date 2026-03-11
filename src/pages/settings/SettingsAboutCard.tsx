@@ -31,9 +31,7 @@ export function SettingsAboutCard({ about }: { about: AppAboutInfo | null }) {
           </div>
         </div>
       ) : (
-        <div className="text-sm text-slate-600 dark:text-slate-400">
-          仅在 Tauri Desktop 环境可用。
-        </div>
+        <div className="text-sm text-slate-600 dark:text-slate-400">加载中…</div>
       )}
     </Card>
   );

@@ -7,10 +7,6 @@ vi.mock("@tauri-apps/api/window", () => ({
   }),
 }));
 
-vi.mock("../../services/tauriInvoke", () => ({
-  hasTauriRuntime: () => false,
-}));
-
 describe("hooks/useTheme", () => {
   beforeEach(() => {
     localStorage.clear();

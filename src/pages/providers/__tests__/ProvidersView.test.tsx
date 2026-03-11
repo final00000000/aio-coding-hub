@@ -735,9 +735,7 @@ describe("pages/providers/ProvidersView", () => {
     vi.mocked(useGatewayCircuitResetCliMutation).mockReturnValue(resetCliMutation as any);
 
     const deleteMutation = { mutateAsync: vi.fn() };
-    deleteMutation.mutateAsync
-      .mockResolvedValueOnce(false)
-      .mockRejectedValueOnce(new Error("boom"));
+    deleteMutation.mutateAsync.mockResolvedValueOnce(true).mockRejectedValueOnce(new Error("boom"));
     vi.mocked(useProviderDeleteMutation).mockReturnValue(deleteMutation as any);
 
     const reorderMutation = { mutateAsync: vi.fn() };
@@ -774,14 +772,15 @@ describe("pages/providers/ProvidersView", () => {
     fireEvent.click(screen.getByRole("button", { name: "解除熔断（全部）" }));
     await waitFor(() => expect(resetCliMutation.mutateAsync).toHaveBeenCalledTimes(3));
 
-    // delete: ok false + error branches
+    // delete: success + error branches
     fireEvent.click(screen.getAllByTitle("删除")[0]!);
     fireEvent.click(screen.getByRole("button", { name: "确认删除" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "确认删除" })).toBeEnabled());
+    await waitFor(() => expect(deleteMutation.mutateAsync).toHaveBeenCalledTimes(1));
+
+    // re-open delete dialog for error branch
+    fireEvent.click(screen.getAllByTitle("删除")[0]!);
     fireEvent.click(screen.getByRole("button", { name: "确认删除" }));
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(deleteMutation.mutateAsync).toHaveBeenCalled();
+    await waitFor(() => expect(deleteMutation.mutateAsync).toHaveBeenCalledTimes(2));
 
     // drag end edge cases
     latestOnDragEnd?.({ active: { id: 1 }, over: null });

@@ -25,14 +25,13 @@ import {
   type SkillRepoSummary,
   type SkillsPaths,
 } from "../services/skills";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { skillsKeys } from "./keys";
 
 export function useSkillReposListQuery(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: skillsKeys.reposList(),
     queryFn: () => skillReposList(),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -47,7 +46,7 @@ export function useSkillsInstalledListQuery(
       if (!workspaceId) return null;
       return skillsInstalledList(workspaceId);
     },
-    enabled: hasTauriRuntime() && Boolean(workspaceId) && (options?.enabled ?? true),
+    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
     placeholderData: keepPreviousData,
   });
 }
@@ -62,7 +61,7 @@ export function useSkillsLocalListQuery(
       if (!workspaceId) return null;
       return skillsLocalList(workspaceId);
     },
-    enabled: hasTauriRuntime() && Boolean(workspaceId) && (options?.enabled ?? true),
+    enabled: Boolean(workspaceId) && (options?.enabled ?? true),
     placeholderData: keepPreviousData,
   });
 }
@@ -71,7 +70,7 @@ export function useSkillsDiscoverAvailableQuery(refresh: boolean, options?: { en
   return useQuery({
     queryKey: skillsKeys.discoverAvailable(refresh),
     queryFn: () => skillsDiscoverAvailable(refresh),
-    enabled: hasTauriRuntime() && (options?.enabled ?? true),
+    enabled: options?.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }
@@ -103,7 +102,7 @@ export function useSkillsPathsQuery(cliKey: CliKey | null, options?: { enabled?:
       if (!cliKey) return null;
       return skillsPathsGet(cliKey);
     },
-    enabled: hasTauriRuntime() && Boolean(cliKey) && (options?.enabled ?? true),
+    enabled: Boolean(cliKey) && (options?.enabled ?? true),
     placeholderData: keepPreviousData,
   });
 }

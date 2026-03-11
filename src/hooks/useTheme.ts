@@ -1,6 +1,5 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 
 type Theme = "light" | "dark" | "system";
 
@@ -60,8 +59,6 @@ function getServerSnapshot(): ThemeSnapshot {
 
 /** Sync native window titlebar theme with the resolved app theme. */
 function syncNativeTheme(theme: Theme) {
-  if (!hasTauriRuntime()) return;
-
   const nativeTheme = theme === "system" ? null : theme;
   try {
     getCurrentWindow()

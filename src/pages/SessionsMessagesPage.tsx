@@ -12,7 +12,6 @@ import {
   escapeShellArg,
 } from "../services/cliSessions";
 import { copyText } from "../services/clipboard";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { useCliSessionsMessagesInfiniteQuery } from "../query/cliSessions";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
@@ -164,7 +163,6 @@ function avatarTextForRole(roleRaw: string) {
 }
 
 export function SessionsMessagesPage() {
-  const tauriRuntime = hasTauriRuntime();
   const params = useParams();
   const navigate = useNavigate();
 
@@ -183,7 +181,7 @@ export function SessionsMessagesPage() {
   const [showTimestamp, setShowTimestamp] = useState<boolean>(true);
   const [showModel, setShowModel] = useState<boolean>(false);
 
-  const enabled = tauriRuntime && source != null && session != null && filePath.trim().length > 0;
+  const enabled = source != null && session != null && filePath.trim().length > 0;
   const messagesQuery = useCliSessionsMessagesInfiniteQuery(safeSource, filePath, {
     enabled,
     fromEnd: false,
@@ -223,16 +221,6 @@ export function SessionsMessagesPage() {
     if (!el) return;
     el.scrollTop = 0;
   }, [source, filePath]);
-
-  if (!tauriRuntime) {
-    return (
-      <EmptyState
-        title="该功能仅在桌面端可用"
-        description="需要在 Tauri 运行时读取本地会话文件。"
-        variant="dashed"
-      />
-    );
-  }
 
   if (source == null) {
     return (

@@ -37,16 +37,6 @@ vi.mock("../../services/mcp", async () => {
 });
 
 describe("query/mcp", () => {
-  it("does not call mcpServersList without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(() => useMcpServersListQuery(1), { wrapper });
-    await Promise.resolve();
-
-    expect(mcpServersList).not.toHaveBeenCalled();
-  });
-
   it("calls mcpServersList with tauri runtime", async () => {
     setTauriRuntime();
     vi.mocked(mcpServersList).mockResolvedValue([]);

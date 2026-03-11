@@ -26,36 +26,6 @@ vi.mock("../../services/cost", async () => {
 });
 
 describe("query/cost", () => {
-  it("does not call cost services without tauri runtime", async () => {
-    const client = createTestQueryClient();
-    const wrapper = createQueryWrapper(client);
-
-    renderHook(
-      () =>
-        useCostAnalyticsV1Query(
-          "daily",
-          {
-            startTs: null,
-            endTs: null,
-            cliKey: null,
-            providerId: null,
-            model: null,
-          },
-          { enabled: true }
-        ),
-      { wrapper }
-    );
-
-    await Promise.resolve();
-
-    expect(costSummaryV1).not.toHaveBeenCalled();
-    expect(costTrendV1).not.toHaveBeenCalled();
-    expect(costBreakdownProviderV1).not.toHaveBeenCalled();
-    expect(costBreakdownModelV1).not.toHaveBeenCalled();
-    expect(costScatterCliProviderModelV1).not.toHaveBeenCalled();
-    expect(costTopRequestsV1).not.toHaveBeenCalled();
-  });
-
   it("aggregates cost analytics when all services return data", async () => {
     setTauriRuntime();
 

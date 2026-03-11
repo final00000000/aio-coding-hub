@@ -15,7 +15,6 @@ import {
   sortModesList,
   type SortModeActiveRow,
 } from "../services/sortModes";
-import { hasTauriRuntime } from "../services/tauriInvoke";
 import { sortModesKeys } from "./keys";
 
 function invalidateSortModesQueries(
@@ -32,7 +31,7 @@ export function useSortModesListQuery() {
   return useQuery({
     queryKey: sortModesKeys.list(),
     queryFn: () => sortModesList(),
-    enabled: hasTauriRuntime(),
+    enabled: true,
     placeholderData: keepPreviousData,
   });
 }
@@ -41,7 +40,7 @@ export function useSortModeActiveListQuery() {
   return useQuery({
     queryKey: sortModesKeys.activeList(),
     queryFn: () => sortModeActiveList(),
-    enabled: hasTauriRuntime(),
+    enabled: true,
     placeholderData: keepPreviousData,
   });
 }

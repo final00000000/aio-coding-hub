@@ -1,13 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { logToConsole } from "../consoleLog";
-import { hasTauriRuntime, invokeTauriOrNull } from "../tauriInvoke";
+import { invokeTauriOrNull } from "../tauriInvoke";
 import { providerLimitUsageV1 } from "../providerLimitUsage";
 
 vi.mock("../tauriInvoke", async () => {
   const actual = await vi.importActual<typeof import("../tauriInvoke")>("../tauriInvoke");
   return {
     ...actual,
-    hasTauriRuntime: vi.fn(),
     invokeTauriOrNull: vi.fn(),
   };
 });
@@ -21,15 +20,7 @@ vi.mock("../consoleLog", async () => {
 });
 
 describe("services/providerLimitUsage", () => {
-  it("returns null without tauri runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(false);
-
-    await expect(providerLimitUsageV1("claude")).resolves.toBeNull();
-    await expect(providerLimitUsageV1(null)).resolves.toBeNull();
-  });
-
   it("rethrows invoke errors and logs", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockRejectedValueOnce(new Error("provider limit usage boom"));
 
     await expect(providerLimitUsageV1("claude")).rejects.toThrow("provider limit usage boom");
@@ -44,7 +35,6 @@ describe("services/providerLimitUsage", () => {
   });
 
   it("treats null invoke result as error with runtime", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValueOnce(null);
 
     await expect(providerLimitUsageV1("claude")).rejects.toThrow(
@@ -53,7 +43,6 @@ describe("services/providerLimitUsage", () => {
   });
 
   it("keeps argument mapping unchanged", async () => {
-    vi.mocked(hasTauriRuntime).mockReturnValue(true);
     vi.mocked(invokeTauriOrNull).mockResolvedValue([] as any);
 
     await providerLimitUsageV1("claude");
