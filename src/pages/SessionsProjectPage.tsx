@@ -1,8 +1,8 @@
 // Usage: Project sessions list. Backend command: `cli_sessions_sessions_list`.
 
-import { useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Clock, Copy, GitBranch, MessageSquare, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Clock, Copy, GitBranch, MessageSquare, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import {
   type CliSessionsSource,
@@ -13,10 +13,12 @@ import { copyText } from "../services/clipboard";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
   useCliSessionsProjectsListQuery,
+  useCliSessionsSessionDeleteMutation,
   useCliSessionsSessionsListQuery,
 } from "../query/cliSessions";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
+import { ConfirmDialog } from "../ui/ConfirmDialog";
 import { EmptyState } from "../ui/EmptyState";
 import { ErrorState } from "../ui/ErrorState";
 import { Input } from "../ui/Input";
@@ -85,17 +87,25 @@ function compareSession(
 export function SessionsProjectPage() {
   const params = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const source = normalizeSource(params.source);
   const projectId = params.projectId || "";
   const safeSource: CliSessionsSource = source ?? "claude";
+  const distro = searchParams.get("distro") ?? undefined;
   const enabled = source != null && projectId.trim().length > 0;
 
-  const projectsQuery = useCliSessionsProjectsListQuery(safeSource);
-  const sessionsQuery = useCliSessionsSessionsListQuery(safeSource, projectId, { enabled });
+  const projectsQuery = useCliSessionsProjectsListQuery(safeSource, distro);
+  const sessionsQuery = useCliSessionsSessionsListQuery(safeSource, projectId, {
+    enabled,
+    wslDistro: distro,
+  });
+  const deleteMutation = useCliSessionsSessionDeleteMutation();
   const sessions = useMemo(() => pickSessions(sessionsQuery.data), [sessionsQuery.data]);
   const [filterText, setFilterText] = useState("");
   const [sortKey, setSortKey] = useState<SessionSortKey>("recent");
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const filteredSessions = useMemo(() => {
     const q = filterText.trim();
     const next = q ? sessions.filter((s) => sessionMatchesQuery(s, q)) : sessions;
@@ -132,6 +142,87 @@ export function SessionsProjectPage() {
     estimateSize: () => 100,
     overscan: 10,
   });
+  const visibleSelectedCount = useMemo(() => {
+    let count = 0;
+    for (const session of filteredSessions) {
+      if (selectedPaths.has(session.file_path)) {
+        count += 1;
+      }
+    }
+    return count;
+  }, [filteredSessions, selectedPaths]);
+  const allVisibleSelected =
+    filteredSessions.length > 0 && visibleSelectedCount === filteredSessions.length;
+  const selectedVisibleSessions = useMemo(() => {
+    return filteredSessions.filter((session) => selectedPaths.has(session.file_path));
+  }, [filteredSessions, selectedPaths]);
+
+  useEffect(() => {
+    setSelectedPaths(new Set());
+    setShowDeleteDialog(false);
+  }, [distro, projectId, source]);
+
+  useEffect(() => {
+    const visiblePaths = new Set(filteredSessions.map((session) => session.file_path));
+    setSelectedPaths((prev) => {
+      let changed = false;
+      const next = new Set<string>();
+      for (const path of prev) {
+        if (visiblePaths.has(path)) {
+          next.add(path);
+        } else {
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [filteredSessions]);
+
+  function toggleSelect(filePath: string) {
+    setSelectedPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(filePath)) next.delete(filePath);
+      else next.add(filePath);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (allVisibleSelected) {
+      setSelectedPaths(new Set());
+    } else {
+      setSelectedPaths(new Set(filteredSessions.map((s) => s.file_path)));
+    }
+  }
+
+  async function confirmDelete() {
+    if (selectedPaths.size === 0 || !source) return;
+    try {
+      const failedList = await deleteMutation.mutateAsync({
+        source,
+        filePaths: [...selectedPaths],
+        projectId,
+        wslDistro: distro,
+      });
+      const successCount = selectedPaths.size - (failedList?.length ?? 0);
+      if (successCount > 0) {
+        toast(`已删除 ${successCount} 个会话`);
+      }
+      if (failedList && failedList.length > 0) {
+        toast(`${failedList.length} 个会话删除失败`);
+      }
+      setSelectedPaths(new Set());
+      setShowDeleteDialog(false);
+    } catch (err) {
+      toast(`删除失败：${String(err)}`);
+    }
+  }
+
+  function handleSingleDelete(e: React.MouseEvent, filePath: string) {
+    e.stopPropagation();
+    setSelectedPaths(new Set([filePath]));
+    setShowDeleteDialog(true);
+  }
 
   if (source == null) {
     return (
@@ -143,6 +234,15 @@ export function SessionsProjectPage() {
     );
   }
 
+  const backUrl = distro
+    ? `/sessions?source=${source}&distro=${encodeURIComponent(distro)}`
+    : `/sessions?source=${source}`;
+
+  function buildSessionNavUrl(filePath: string) {
+    const base = `/sessions/${source}/${encodeURIComponent(projectId)}/session/${encodeURIComponent(filePath)}`;
+    return distro ? `${base}?distro=${encodeURIComponent(distro)}` : base;
+  }
+
   return (
     <div className="flex flex-col gap-6 h-full overflow-hidden">
       <PageHeader
@@ -150,7 +250,7 @@ export function SessionsProjectPage() {
         subtitle={project?.display_path}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" onClick={() => navigate(`/sessions?source=${source}`)}>
+            <Button variant="secondary" onClick={() => navigate(backUrl)}>
               <ArrowLeft className="h-4 w-4" />
               返回项目
             </Button>
@@ -176,6 +276,11 @@ export function SessionsProjectPage() {
               </div>
               <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                 来源：<span className="font-semibold">{source}</span>
+                {distro ? (
+                  <span className="ml-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    WSL: {distro}
+                  </span>
+                ) : null}
               </div>
             </div>
             <Button
@@ -291,6 +396,17 @@ export function SessionsProjectPage() {
             </div>
 
             <div className="flex items-center gap-2">
+              {selectedPaths.size > 0 && (
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => setShowDeleteDialog(true)}
+                  className="h-9"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  删除 ({selectedPaths.size})
+                </Button>
+              )}
               <Select
                 value={sortKey}
                 onChange={(e) => setSortKey(e.currentTarget.value as SessionSortKey)}
@@ -319,7 +435,16 @@ export function SessionsProjectPage() {
             </div>
           </div>
 
-          <div className="mt-3 hidden grid-cols-[1fr_90px_140px_120px] gap-3 px-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400 sm:grid">
+          <div className="mt-3 hidden grid-cols-[32px_1fr_90px_140px_120px] gap-3 px-3 text-[11px] font-semibold text-slate-500 dark:text-slate-400 sm:grid">
+            <span>
+              <input
+                type="checkbox"
+                checked={allVisibleSelected}
+                onChange={toggleSelectAll}
+                className="h-4 w-4 rounded border-slate-300 text-accent focus:ring-accent dark:border-slate-600"
+                aria-label="全选"
+              />
+            </span>
             <span>会话</span>
             <span className="text-right">消息</span>
             <span className="text-right">更新</span>
@@ -358,6 +483,7 @@ export function SessionsProjectPage() {
                 {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                   const session = filteredSessions[virtualRow.index];
                   const title = sessionTitle(session);
+                  const isSelected = selectedPaths.has(session.file_path);
                   const modifiedLabel =
                     session.modified_at != null
                       ? formatRelativeTimeFromUnixSeconds(session.modified_at)
@@ -384,27 +510,41 @@ export function SessionsProjectPage() {
                         className={cn(
                           "w-full cursor-pointer text-left rounded-2xl border border-slate-200 bg-white px-3 py-3 shadow-card transition",
                           "hover:border-slate-300 hover:bg-slate-50",
-                          "dark:border-slate-700 dark:bg-slate-900/40 dark:hover:border-slate-600 dark:hover:bg-slate-900/60"
+                          "dark:border-slate-700 dark:bg-slate-900/40 dark:hover:border-slate-600 dark:hover:bg-slate-900/60",
+                          isSelected &&
+                            "border-accent/40 bg-accent/5 dark:border-accent/30 dark:bg-accent/5"
                         )}
                         tabIndex={0}
                         onClick={() =>
-                          navigate(
-                            `/sessions/${source}/${encodeURIComponent(projectId)}/session/${encodeURIComponent(session.file_path)}`,
-                            { state: { session } }
-                          )
+                          navigate(buildSessionNavUrl(session.file_path), {
+                            state: { session },
+                          })
                         }
                         onKeyDown={(e) => {
                           if (e.target !== e.currentTarget) return;
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            navigate(
-                              `/sessions/${source}/${encodeURIComponent(projectId)}/session/${encodeURIComponent(session.file_path)}`,
-                              { state: { session } }
-                            );
+                            navigate(buildSessionNavUrl(session.file_path), {
+                              state: { session },
+                            });
                           }
                         }}
                       >
-                        <div className="grid gap-2 sm:grid-cols-[1fr_90px_140px_120px] sm:items-center sm:gap-3">
+                        <div className="grid gap-2 sm:grid-cols-[32px_1fr_90px_140px_120px] sm:items-center sm:gap-3">
+                          <div
+                            className="hidden sm:flex items-center justify-center"
+                            onClick={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelect(session.file_path)}
+                              className="h-4 w-4 rounded border-slate-300 text-accent focus:ring-accent dark:border-slate-600"
+                              aria-label={`选择会话 ${title}`}
+                            />
+                          </div>
+
                           <div className="min-w-0">
                             <div className="line-clamp-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                               {title}
@@ -439,7 +579,7 @@ export function SessionsProjectPage() {
                             <span className="font-semibold">{modifiedLabel}</span>
                           </div>
 
-                          <div className="flex items-center justify-end">
+                          <div className="flex items-center justify-end gap-1">
                             <Button
                               size="sm"
                               variant="primary"
@@ -459,6 +599,15 @@ export function SessionsProjectPage() {
                               <Copy className="h-3.5 w-3.5" />
                               复制
                             </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={(e) => handleSingleDelete(e, session.file_path)}
+                              title="删除会话"
+                              className="h-8 text-slate-400 hover:text-rose-500 dark:text-slate-500 dark:hover:text-rose-400"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -470,6 +619,31 @@ export function SessionsProjectPage() {
           </div>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={showDeleteDialog}
+        title="确认删除会话"
+        description={`将删除 ${selectedPaths.size} 个会话文件，此操作不可撤销。`}
+        onClose={() => setShowDeleteDialog(false)}
+        onConfirm={() => void confirmDelete()}
+        confirmLabel={`确认删除 (${selectedPaths.size})`}
+        confirmingLabel="删除中…"
+        confirming={deleteMutation.isPending}
+        confirmVariant="danger"
+      >
+        <div className="max-h-40 overflow-auto text-sm text-slate-600 dark:text-slate-400">
+          <ul className="space-y-1">
+            {selectedVisibleSessions.slice(0, 10).map((s) => (
+              <li key={s.file_path} className="truncate">
+                {sessionTitle(s)}
+              </li>
+            ))}
+            {selectedPaths.size > 10 && (
+              <li className="text-slate-400">...还有 {selectedPaths.size - 10} 个</li>
+            )}
+          </ul>
+        </div>
+      </ConfirmDialog>
     </div>
   );
 }

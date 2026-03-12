@@ -1,6 +1,6 @@
 // Usage: Session viewer entry (projects list). Backend commands: `cli_sessions_projects_list`.
 
-import { useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Clock, FolderOpen, Hash, Search } from "lucide-react";
 import { useVirtualizer } from "@tanstack/react-virtual";
@@ -17,6 +17,7 @@ import { ErrorState } from "../ui/ErrorState";
 import { Input } from "../ui/Input";
 import { Select } from "../ui/Select";
 import { useCliSessionsProjectsListQuery } from "../query/cliSessions";
+import { useWslDetectionQuery } from "../query/wsl";
 import { cn } from "../utils/cn";
 import { formatRelativeTimeFromUnixSeconds, formatUnixSeconds } from "../utils/formatters";
 
@@ -27,6 +28,10 @@ const SOURCE_TABS: Array<{ key: CliSessionsSource; label: string }> = [
 
 type ProjectSortKey = "recent" | "sessions" | "name";
 
+function isWindowsRuntime() {
+  return typeof navigator !== "undefined" && /Win/.test(navigator.userAgent);
+}
+
 function normalizeSource(raw: string | null): CliSessionsSource | null {
   if (raw === "claude" || raw === "codex") return raw;
   return null;
@@ -36,7 +41,11 @@ function pickProjects(data: CliSessionsProjectSummary[] | null | undefined) {
   return data ?? [];
 }
 
-function sourceDirHint(source: CliSessionsSource) {
+function sourceDirHint(source: CliSessionsSource, distro?: string) {
+  if (distro) {
+    if (source === "claude") return `\\\\wsl$\\${distro}\\~/.claude/projects`;
+    return `\\\\wsl$\\${distro}\\~/.codex/sessions`;
+  }
   if (source === "claude") return "~/.claude/projects";
   return "$CODEX_HOME/sessions 或 ~/.codex/sessions";
 }
@@ -73,14 +82,27 @@ function compareProject(
 export function SessionsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [source, setSource] = useState<CliSessionsSource>(() => {
-    return normalizeSource(searchParams.get("source")) ?? "claude";
-  });
+  const isWindows = isWindowsRuntime();
+  const source = normalizeSource(searchParams.get("source")) ?? "claude";
+  const distroParam = searchParams.get("distro")?.trim() ?? "";
   const [filterText, setFilterText] = useState("");
   const [sortKey, setSortKey] = useState<ProjectSortKey>("recent");
   const parentRef = useRef<HTMLDivElement>(null);
 
-  const projectsQuery = useCliSessionsProjectsListQuery(source);
+  const wslDetection = useWslDetectionQuery({ enabled: isWindows });
+  const wslDistros = useMemo(
+    () => (wslDetection.data?.detected ? wslDetection.data.distros : []),
+    [wslDetection.data]
+  );
+  const showEnvSelector = isWindows && wslDistros.length > 0;
+  const activeDistro =
+    !isWindows || !distroParam
+      ? undefined
+      : !wslDetection.isFetched || wslDistros.includes(distroParam)
+        ? distroParam
+        : undefined;
+
+  const projectsQuery = useCliSessionsProjectsListQuery(source, activeDistro);
   const projects = useMemo(() => pickProjects(projectsQuery.data), [projectsQuery.data]);
   const filteredProjects = useMemo(() => {
     const q = filterText.trim();
@@ -109,12 +131,26 @@ export function SessionsPage() {
   const loading = projectsQuery.isLoading;
   const available: boolean | null = loading ? null : projectsQuery.data != null;
 
-  function handleSourceChange(next: CliSessionsSource) {
-    setSource(next);
-    setSearchParams({ source: next }, { replace: true });
+  useEffect(() => {
     setFilterText("");
     setSortKey("recent");
+  }, [activeDistro, source]);
+
+  function updateSearchParams(nextSource: CliSessionsSource, nextDistro: string) {
+    const params: Record<string, string> = { source: nextSource };
+    if (nextDistro) params.distro = nextDistro;
+    setSearchParams(params, { replace: true });
   }
+
+  function handleSourceChange(next: CliSessionsSource) {
+    updateSearchParams(next, distroParam);
+  }
+
+  function handleDistroChange(next: string) {
+    updateSearchParams(source, next);
+  }
+
+  const envLabel = activeDistro ? `WSL: ${activeDistro}` : "Windows";
 
   return (
     <div className="flex flex-col gap-6 h-full overflow-hidden">
@@ -122,12 +158,29 @@ export function SessionsPage() {
         title="Session 会话"
         subtitle="从本地会话文件读取（项目 → 会话 → 消息）"
         actions={
-          <TabList
-            ariaLabel="来源切换"
-            items={SOURCE_TABS}
-            value={source}
-            onChange={handleSourceChange}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            {showEnvSelector ? (
+              <Select
+                value={activeDistro ?? ""}
+                onChange={(e) => handleDistroChange(e.currentTarget.value)}
+                className="h-9 w-44 text-xs"
+                aria-label="运行环境"
+              >
+                <option value="">Windows</option>
+                {wslDistros.map((d) => (
+                  <option key={d} value={d}>
+                    WSL: {d}
+                  </option>
+                ))}
+              </Select>
+            ) : null}
+            <TabList
+              ariaLabel="来源切换"
+              items={SOURCE_TABS}
+              value={source}
+              onChange={handleSourceChange}
+            />
+          </div>
         }
       />
 
@@ -145,9 +198,11 @@ export function SessionsPage() {
         <EmptyState
           title="未找到任何项目"
           description={
-            source === "claude"
-              ? "请确认 ~/.claude/projects 目录存在并且包含会话文件。"
-              : "请确认 $CODEX_HOME/sessions 或 ~/.codex/sessions 目录存在并且包含会话文件。"
+            activeDistro
+              ? `请确认 WSL ${activeDistro} 中 ${source === "claude" ? "~/.claude/projects" : "~/.codex/sessions"} 目录存在并且包含会话文件。`
+              : source === "claude"
+                ? "请确认 ~/.claude/projects 目录存在并且包含会话文件。"
+                : "请确认 $CODEX_HOME/sessions 或 ~/.codex/sessions 目录存在并且包含会话文件。"
           }
           variant="dashed"
         />
@@ -159,12 +214,17 @@ export function SessionsPage() {
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">概览</div>
                 <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
                   当前来源：<span className="font-semibold">{source}</span>
+                  {activeDistro ? (
+                    <span className="ml-2 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                      {envLabel}
+                    </span>
+                  ) : null}
                 </div>
               </div>
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => void copyText(sourceDirHint(source))}
+                onClick={() => void copyText(sourceDirHint(source, activeDistro))}
                 className="h-9"
                 title="复制数据源路径提示"
               >
@@ -207,7 +267,7 @@ export function SessionsPage() {
                 <div className="flex items-start justify-between gap-2">
                   <span className="shrink-0 text-slate-500 dark:text-slate-500">目录</span>
                   <span className="min-w-0 text-right font-mono text-[11px] text-slate-700 dark:text-slate-300">
-                    {sourceDirHint(source)}
+                    {sourceDirHint(source, activeDistro)}
                   </span>
                 </div>
               </div>
@@ -304,6 +364,10 @@ export function SessionsPage() {
                   const modifiedTitle =
                     project.last_modified != null ? formatUnixSeconds(project.last_modified) : "—";
 
+                  const navUrl = activeDistro
+                    ? `/sessions/${source}/${encodeURIComponent(project.id)}?distro=${encodeURIComponent(activeDistro)}`
+                    : `/sessions/${source}/${encodeURIComponent(project.id)}`;
+
                   return (
                     <div
                       key={virtualItem.key}
@@ -323,7 +387,7 @@ export function SessionsPage() {
                             toast("无效项目 ID");
                             return;
                           }
-                          navigate(`/sessions/${source}/${encodeURIComponent(project.id)}`);
+                          navigate(navUrl);
                         }}
                         className={cn(
                           "w-full rounded-2xl border border-slate-200 bg-white px-3 py-3 text-left shadow-card transition",

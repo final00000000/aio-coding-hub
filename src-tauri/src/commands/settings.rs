@@ -92,6 +92,16 @@ pub(crate) async fn settings_set(
         wsl_custom_host_address,
     } = update;
 
+    // Capture WSL-related update flags before values are moved into the closure
+    #[cfg(windows)]
+    let wsl_auto_config_update = wsl_auto_config;
+    #[cfg(windows)]
+    let has_wsl_field_update = gateway_listen_mode.is_some()
+        || gateway_custom_listen_address.is_some()
+        || wsl_target_cli.is_some()
+        || wsl_host_address_mode.is_some()
+        || wsl_custom_host_address.is_some();
+
     let app_for_work = app.clone();
     let next_settings = blocking::run(
         "settings_set",
@@ -228,6 +238,23 @@ pub(crate) async fn settings_set(
     app.state::<resident::ResidentState>()
         .set_tray_enabled(next_settings.tray_enabled);
 
+    // Trigger WSL auto-sync when wsl_auto_config is enabled and relevant fields changed
+    #[cfg(windows)]
+    {
+        let should_sync = next_settings.wsl_auto_config
+            && next_settings.gateway_listen_mode != settings::GatewayListenMode::Localhost
+            && (wsl_auto_config_update == Some(true) || has_wsl_field_update);
+
+        if should_sync {
+            let sync_app = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(err) = wsl_auto_sync_after_settings(&sync_app).await {
+                    tracing::warn!("WSL auto-sync after settings change failed: {}", err);
+                }
+            });
+        }
+    }
+
     tracing::info!(
         preferred_port = next_settings.preferred_port,
         auto_start = next_settings.auto_start,
@@ -326,4 +353,11 @@ pub(crate) async fn settings_codex_session_id_completion_set(
     })
     .await
     .map_err(Into::into)
+}
+
+/// Background WSL sync triggered after settings change.
+/// Delegates to the shared `wsl_auto_sync_core` which handles all precondition checks.
+#[cfg(windows)]
+async fn wsl_auto_sync_after_settings(app: &tauri::AppHandle) -> Result<(), String> {
+    super::wsl::wsl_auto_sync_core(app).await
 }

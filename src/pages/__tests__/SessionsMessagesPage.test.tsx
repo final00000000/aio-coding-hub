@@ -60,6 +60,7 @@ const SESSION: CliSessionsSessionSummary = {
   cwd: "/working/dir",
   model_provider: "anthropic",
   cli_version: "1.2.3",
+  wsl_distro: null,
 };
 
 const MESSAGES: CliSessionsDisplayMessage[] = [
@@ -326,6 +327,7 @@ describe("pages/SessionsMessagesPage", () => {
       cwd: null,
       model_provider: null,
       cli_version: null,
+      wsl_distro: null,
     };
 
     renderWithRoute("/sessions/claude/proj1/session/f.json", {
@@ -364,5 +366,144 @@ describe("pages/SessionsMessagesPage", () => {
 
     expect(await screen.findByText("Unknown role message")).toBeInTheDocument();
     expect(screen.getByText("custom_role")).toBeInTheDocument();
+  });
+
+  it("clicks load more button to fetch next page", async () => {
+    setTauriRuntime();
+    vi.mocked(cliSessionsMessagesGet)
+      .mockResolvedValueOnce({
+        messages: [MESSAGES[0]],
+        total: 10,
+        page: 0,
+        page_size: 50,
+        has_more: true,
+      })
+      .mockResolvedValueOnce({
+        messages: [MESSAGES[1]],
+        total: 10,
+        page: 1,
+        page_size: 50,
+        has_more: false,
+      });
+
+    renderWithRoute("/sessions/claude/proj1/session/file.json", {
+      session: SESSION,
+    });
+
+    expect(await screen.findByText("Hello from user")).toBeInTheDocument();
+    const loadMoreBtn = screen.getByTitle("加载更多消息");
+    fireEvent.click(loadMoreBtn);
+    await waitFor(() => {
+      expect(cliSessionsMessagesGet).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it("clicks scroll to bottom buttons", async () => {
+    setTauriRuntime();
+    vi.mocked(cliSessionsMessagesGet).mockResolvedValue({
+      messages: [MESSAGES[0]],
+      total: 1,
+      page: 0,
+      page_size: 50,
+      has_more: false,
+    });
+
+    renderWithRoute("/sessions/claude/proj1/session/file.json", {
+      session: SESSION,
+    });
+
+    expect(await screen.findByText("Hello from user")).toBeInTheDocument();
+    // sidebar bottom button
+    const sidebarBottomBtn = screen.getByText("到会话末尾");
+    fireEvent.click(sidebarBottomBtn);
+    // header bottom icon button
+    const headerBottomBtn = screen.getAllByTitle("滚动到会话末尾")[1];
+    if (headerBottomBtn) fireEvent.click(headerBottomBtn);
+  });
+
+  it("copies resume command via quick action button", async () => {
+    setTauriRuntime();
+    const { copyText } = await import("../../services/clipboard");
+    vi.mocked(cliSessionsMessagesGet).mockResolvedValue({
+      messages: [MESSAGES[0]],
+      total: 1,
+      page: 0,
+      page_size: 50,
+      has_more: false,
+    });
+
+    renderWithRoute("/sessions/claude/proj1/session/file.json", {
+      session: SESSION,
+    });
+
+    expect(await screen.findByText("Hello from user")).toBeInTheDocument();
+    const copyResumeBtn = screen.getByTitle("复制恢复命令");
+    fireEvent.click(copyResumeBtn);
+    expect(copyText).toHaveBeenCalled();
+  });
+
+  it("copies session ID via quick action button", async () => {
+    setTauriRuntime();
+    const { copyText } = await import("../../services/clipboard");
+    vi.mocked(cliSessionsMessagesGet).mockResolvedValue({
+      messages: [],
+      total: 0,
+      page: 0,
+      page_size: 50,
+      has_more: false,
+    });
+
+    renderWithRoute("/sessions/claude/proj1/session/file.json", {
+      session: SESSION,
+    });
+
+    const copyIdBtn = screen.getByTitle("复制 Session ID");
+    fireEvent.click(copyIdBtn);
+    expect(copyText).toHaveBeenCalledWith("ses-abc-123");
+  });
+
+  it("copies file path via quick action button", async () => {
+    setTauriRuntime();
+    const { copyText } = await import("../../services/clipboard");
+    vi.mocked(cliSessionsMessagesGet).mockResolvedValue({
+      messages: [],
+      total: 0,
+      page: 0,
+      page_size: 50,
+      has_more: false,
+    });
+
+    renderWithRoute("/sessions/claude/proj1/session/path%2Fto%2Ffile.json", {
+      session: SESSION,
+    });
+
+    const copyPathBtn = screen.getByTitle("复制文件路径");
+    fireEvent.click(copyPathBtn);
+    expect(copyText).toHaveBeenCalledWith("path/to/file.json");
+  });
+
+  it("renders with empty role string as unknown", async () => {
+    setTauriRuntime();
+    vi.mocked(cliSessionsMessagesGet).mockResolvedValue({
+      messages: [
+        {
+          uuid: "msg-empty-role",
+          role: "  ",
+          timestamp: null,
+          model: null,
+          content: [{ type: "text", text: "Empty role" }],
+        },
+      ],
+      total: 1,
+      page: 0,
+      page_size: 50,
+      has_more: false,
+    });
+
+    renderWithRoute("/sessions/claude/proj1/session/file.json", {
+      session: SESSION,
+    });
+
+    expect(await screen.findByText("Empty role")).toBeInTheDocument();
   });
 });
