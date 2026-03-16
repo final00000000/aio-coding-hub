@@ -32,6 +32,10 @@ static EXIT_CLEANUP_SPAWNED: AtomicBool = AtomicBool::new(false);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Must run before Tauri initialises WebKitGTK to prevent EGL display
+    // creation failure on Wayland (AppImage bundled-lib conflict, issue #93).
+    crate::app::linux_webkit_compat::apply();
+
     let builder = tauri::Builder::default()
         .manage(DbInitState::default())
         .manage(GatewayState::default())

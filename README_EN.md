@@ -108,7 +108,32 @@ Go to [Releases](https://github.com/dyndynjyxa/aio-coding-hub/releases) and down
 |----------|---------|
 | **Windows** | `.exe` (NSIS) or `.msi` |
 | **macOS** | `.dmg` |
-| **Linux** | `.deb` / `.AppImage` |
+| **Linux** | `.deb` / `.AppImage` / `-wayland.AppImage` |
+
+<details>
+<summary>Linux Arch / Wayland users</summary>
+
+**Recommended: AUR package** (uses system libraries, best compatibility)
+
+```bash
+paru -S aio-coding-hub-bin
+# or
+yay -S aio-coding-hub-bin
+```
+
+**AppImage users**
+
+The app automatically detects Wayland sessions and sets `WEBKIT_DISABLE_COMPOSITING_MODE=1`
+to prevent EGL display initialisation crashes (see [issue #93](https://github.com/dyndynjyxa/aio-coding-hub/issues/93)).
+If you still see a blank white window, use the `*-wayland.AppImage` artifact from the Release page
+(bundled EGL/Mesa libraries stripped; system versions are used instead):
+
+```bash
+# Or manually repack an existing AppImage
+./scripts/repack-linux-appimage-wayland.sh aio-coding-hub-linux-amd64.AppImage
+```
+
+</details>
 
 <details>
 <summary>macOS security note</summary>
