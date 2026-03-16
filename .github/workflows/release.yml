@@ -350,6 +350,8 @@ jobs:
             exit 1
           fi
 
+          src="$(realpath "$src")"
+
           # Ensure the AppImage is executable before running --appimage-extract.
           chmod +x "$src"
 
