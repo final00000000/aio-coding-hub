@@ -481,7 +481,7 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-1.5">
             {tagCounts.size > 0 && (
               <>
@@ -528,8 +528,11 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
             <span className="text-[11px] text-slate-500 dark:text-slate-400">
               路由顺序：按拖拽顺序（上→下）
             </span>
+            <span className="text-[11px] text-slate-500 dark:text-slate-400">
+              共 {filteredProviders.length} / {providers.length} 条
+            </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             {hasUnavailableCircuit ? (
               <Button
                 onClick={() => void resetCircuitAll(activeCli)}
@@ -545,6 +548,17 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
               </Button>
             ) : null}
 
+            <div className="relative w-full sm:w-72">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={providerSearch}
+                onChange={(e) => setProviderSearch(e.currentTarget.value)}
+                placeholder="搜索当前 CLI 下的供应商名称"
+                className="pl-9"
+                aria-label="搜索供应商名称"
+              />
+            </div>
+
             <Button
               onClick={() => {
                 openCreateDialog(activeCli);
@@ -555,22 +569,6 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
               添加
             </Button>
           </div>
-        </div>
-
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:max-w-sm">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <Input
-              value={providerSearch}
-              onChange={(e) => setProviderSearch(e.currentTarget.value)}
-              placeholder="搜索当前 CLI 下的供应商名称"
-              className="pl-9"
-              aria-label="搜索供应商名称"
-            />
-          </div>
-          <span className="text-xs text-slate-500 dark:text-slate-400">
-            共 {filteredProviders.length} / {providers.length} 条
-          </span>
         </div>
 
         <div className="lg:min-h-0 lg:flex-1 lg:overflow-auto lg:pr-1">
