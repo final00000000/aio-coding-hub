@@ -654,4 +654,79 @@ mod tests {
         assert_eq!(anthropic["usage"]["output_tokens"], 10);
         assert_eq!(anthropic["usage"]["cache_read_input_tokens"], 80);
     }
+
+    #[test]
+    fn e2e_response_to_sse_preserves_cache_tokens_for_usage_tracker() {
+        let bridge = get_bridge("cx2cc").unwrap();
+        let ctx = cx2cc_ctx();
+
+        let openai_resp = json!({
+            "id": "resp_cache_sse",
+            "model": "gpt-4.1",
+            "status": "completed",
+            "output": [
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [
+                        {"type": "output_text", "text": "cached response"}
+                    ]
+                }
+            ],
+            "usage": {
+                "input_tokens": 100,
+                "output_tokens": 10,
+                "input_tokens_details": {
+                    "cached_tokens": 80
+                }
+            }
+        });
+
+        let sse_bytes = bridge.translate_response_to_sse(openai_resp, &ctx).unwrap();
+        let usage = crate::usage::parse_usage_from_json_or_sse_bytes("claude", &sse_bytes)
+            .expect("usage should be extractable from SSE");
+
+        assert_eq!(usage.metrics.input_tokens, Some(100));
+        assert_eq!(usage.metrics.output_tokens, Some(10));
+        assert_eq!(usage.metrics.cache_read_input_tokens, Some(80));
+    }
+
+    #[test]
+    fn e2e_response_to_sse_preserves_cache_creation_tokens_for_usage_tracker() {
+        let bridge = get_bridge("cx2cc").unwrap();
+        let ctx = cx2cc_ctx();
+
+        let openai_resp = json!({
+            "id": "resp_cache_creation_sse",
+            "model": "gpt-4.1",
+            "status": "completed",
+            "output": [
+                {
+                    "type": "message",
+                    "role": "assistant",
+                    "content": [
+                        {"type": "output_text", "text": "cached response"}
+                    ]
+                }
+            ],
+            "usage": {
+                "input_tokens": 100,
+                "output_tokens": 10,
+                "cache_creation": {
+                    "ephemeral_5m_input_tokens": 20,
+                    "ephemeral_1h_input_tokens": 5
+                }
+            }
+        });
+
+        let sse_bytes = bridge.translate_response_to_sse(openai_resp, &ctx).unwrap();
+        let usage = crate::usage::parse_usage_from_json_or_sse_bytes("claude", &sse_bytes)
+            .expect("usage should be extractable from SSE");
+
+        assert_eq!(usage.metrics.input_tokens, Some(100));
+        assert_eq!(usage.metrics.output_tokens, Some(10));
+        assert_eq!(usage.metrics.cache_creation_5m_input_tokens, Some(20));
+        assert_eq!(usage.metrics.cache_creation_1h_input_tokens, Some(5));
+        assert_eq!(usage.metrics.cache_creation_input_tokens, Some(25));
+    }
 }

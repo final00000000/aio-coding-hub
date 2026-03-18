@@ -242,14 +242,15 @@ const RequestLogCard = memo(function RequestLogCard({
               <span className="truncate">{modelText}</span>
             </span>
 
-            <span
-              className="inline-flex min-w-0 items-center rounded-md bg-slate-100/75 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-700/55 dark:text-slate-200"
-              title={providerTitle}
-            >
-              <span className="truncate">{providerText}</span>
-            </span>
+            {compactMode && (
+              <span
+                className="inline-flex min-w-0 items-center rounded-md bg-slate-100/75 px-2 py-0.5 text-[11px] font-medium text-slate-600 dark:bg-slate-700/55 dark:text-slate-200"
+                title={providerTitle}
+              >
+                <span className="truncate">{providerText}</span>
+              </span>
+            )}
 
-            {log.session_reuse && <SessionReuseBadge showCustomTooltip={showCustomTooltip} />}
             {isFree && <FreeBadge />}
 
             {log.error_code && (
@@ -259,6 +260,7 @@ const RequestLogCard = memo(function RequestLogCard({
             )}
 
             <span className="ml-auto flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 shrink-0">
+              {log.session_reuse && <SessionReuseBadge showCustomTooltip={showCustomTooltip} />}
               <Clock className="h-3 w-3" />
               {formatUnixSeconds(log.created_at)}
             </span>

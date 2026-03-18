@@ -538,7 +538,15 @@ pub(crate) fn claude_terminal_launch_context(
     }
 
     let conn = db.open_connection()?;
-    let row: Option<(String, String, String, String, String, Option<String>)> = conn
+    let row: Option<(
+        String,
+        String,
+        String,
+        String,
+        String,
+        Option<String>,
+        Option<i64>,
+    )> = conn
         .query_row(
             r#"
 SELECT
@@ -547,7 +555,8 @@ SELECT
   base_urls_json,
   api_key_plaintext,
   auth_mode,
-  oauth_access_token
+  oauth_access_token,
+  source_provider_id
 FROM providers
 WHERE id = ?1
 "#,
@@ -560,6 +569,7 @@ WHERE id = ?1
                     row.get(3)?,
                     row.get(4)?,
                     row.get(5)?,
+                    row.get(6)?,
                 ))
             },
         )
@@ -573,6 +583,7 @@ WHERE id = ?1
         api_key_plaintext,
         auth_mode,
         oauth_access_token,
+        source_provider_id,
     )) = row
     else {
         return Err("DB_NOT_FOUND: provider not found".to_string().into());
@@ -582,9 +593,10 @@ WHERE id = ?1
         return Err(format!("SEC_INVALID_INPUT: provider_id={provider_id} is not claude").into());
     }
 
-    // For OAuth mode, base_url may legitimately be empty (the gateway handles routing).
-    // For api_key mode, base_url is still required.
-    if auth_mode != "oauth" {
+    // For OAuth mode or cx2cc providers (with source_provider_id), base_url may
+    // legitimately be empty (the gateway handles routing via source provider).
+    // For api_key mode without source_provider_id, base_url is still required.
+    if auth_mode != "oauth" && source_provider_id.is_none() {
         let base_url = base_urls_from_row(&base_url_fallback, &base_urls_json)
             .into_iter()
             .find(|v| !v.trim().is_empty())
@@ -595,6 +607,9 @@ WHERE id = ?1
     }
 
     // Resolve the credential based on auth_mode.
+    // For cx2cc providers the gateway uses the source Codex provider's key at runtime,
+    // so the cx2cc provider itself may have no api_key.  We use a placeholder token
+    // that lets Claude CLI start; the gateway ignores it.
     let effective_credential = if auth_mode == "oauth" {
         let token = oauth_access_token
             .as_deref()
@@ -605,6 +620,13 @@ WHERE id = ?1
                     .to_string()
             })?;
         token.to_string()
+    } else if source_provider_id.is_some() {
+        let key = api_key_plaintext.trim().to_string();
+        if key.is_empty() {
+            format!("cx2cc-{provider_id}")
+        } else {
+            key
+        }
     } else {
         let key = api_key_plaintext.trim().to_string();
         if key.is_empty() {

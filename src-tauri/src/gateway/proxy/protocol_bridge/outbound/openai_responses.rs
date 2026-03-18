@@ -335,12 +335,58 @@ fn parse_usage(usage: Option<&Value>) -> IRUsage {
 
     let cache_read_input_tokens = u
         .pointer("/input_tokens_details/cached_tokens")
-        .and_then(|v| v.as_u64());
+        .and_then(|v| v.as_u64())
+        .or_else(|| {
+            u.pointer("/prompt_tokens_details/cached_tokens")
+                .and_then(|v| v.as_u64())
+        })
+        .or_else(|| u.get("cache_read_input_tokens").and_then(|v| v.as_u64()));
+
+    let cache_creation_5m_input_tokens = u
+        .get("cache_creation_5m_input_tokens")
+        .and_then(|v| v.as_u64())
+        .or_else(|| {
+            u.pointer("/cache_creation/ephemeral_5m_input_tokens")
+                .and_then(|v| v.as_u64())
+        })
+        .or_else(|| {
+            u.get("claude_cache_creation_5_m_tokens")
+                .and_then(|v| v.as_u64())
+        });
+
+    let cache_creation_1h_input_tokens = u
+        .get("cache_creation_1h_input_tokens")
+        .and_then(|v| v.as_u64())
+        .or_else(|| {
+            u.pointer("/cache_creation/ephemeral_1h_input_tokens")
+                .and_then(|v| v.as_u64())
+        })
+        .or_else(|| {
+            u.get("claude_cache_creation_1_h_tokens")
+                .and_then(|v| v.as_u64())
+        });
+
+    let cache_creation_input_tokens = u
+        .get("cache_creation_input_tokens")
+        .and_then(|v| v.as_u64())
+        .or_else(|| {
+            match (
+                cache_creation_5m_input_tokens,
+                cache_creation_1h_input_tokens,
+            ) {
+                (Some(a), Some(b)) => Some(a.saturating_add(b)),
+                (Some(a), None) => Some(a),
+                (None, Some(b)) => Some(b),
+                (None, None) => None,
+            }
+        });
 
     IRUsage {
         input_tokens,
         output_tokens,
-        cache_creation_input_tokens: None,
+        cache_creation_input_tokens,
+        cache_creation_5m_input_tokens,
+        cache_creation_1h_input_tokens,
         cache_read_input_tokens,
     }
 }
@@ -1063,6 +1109,27 @@ mod tests {
 
         let ir = response_to_ir(body).unwrap();
         assert_eq!(ir.usage.cache_read_input_tokens, Some(80));
+    }
+
+    #[test]
+    fn response_to_ir_cache_creation_tokens() {
+        let body = json!({
+            "id": "resp_2",
+            "status": "completed",
+            "model": "gpt-4o",
+            "output": [{"type": "message", "content": [{"type": "output_text", "text": "Hi"}]}],
+            "usage": {
+                "input_tokens": 100,
+                "output_tokens": 50,
+                "cache_creation": {
+                    "ephemeral_5m_input_tokens": 20,
+                    "ephemeral_1h_input_tokens": 5
+                }
+            }
+        });
+
+        let ir = response_to_ir(body).unwrap();
+        assert_eq!(ir.usage.cache_creation_input_tokens, Some(25));
     }
 
     #[test]

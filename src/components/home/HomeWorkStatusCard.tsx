@@ -95,24 +95,29 @@ export function HomeWorkStatusCard({
                   </div>
                 </div>
 
-                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                  {options.map((opt, idx) => {
-                    const active = activeModeId === opt.id;
-                    const key = opt.id == null ? "default" : String(opt.id);
-                    return (
-                      <Fragment key={key}>
-                        {idx > 0 && <span className="text-slate-200 dark:text-slate-600">|</span>}
-                        <Button
-                          onClick={() => onSetCliActiveMode(cliKey, opt.id)}
-                          variant={active ? "primary" : "secondary"}
-                          size="sm"
-                          disabled={modeDisabled}
-                        >
-                          {opt.label}
-                        </Button>
-                      </Fragment>
-                    );
-                  })}
+                <div className="mt-2 flex items-center gap-1.5">
+                  <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">
+                    当前模板:
+                  </span>
+                  <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
+                    {options.map((opt, idx) => {
+                      const active = activeModeId === opt.id;
+                      const key = opt.id == null ? "default" : String(opt.id);
+                      return (
+                        <Fragment key={key}>
+                          {idx > 0 && <span className="text-slate-200 dark:text-slate-600">|</span>}
+                          <Button
+                            onClick={() => onSetCliActiveMode(cliKey, opt.id)}
+                            variant={active ? "primary" : "secondary"}
+                            size="sm"
+                            disabled={modeDisabled}
+                          >
+                            {opt.label}
+                          </Button>
+                        </Fragment>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             );

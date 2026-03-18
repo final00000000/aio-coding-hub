@@ -322,6 +322,12 @@ fn build_response(ir: &InternalResponse, ctx: &BridgeContext) -> Result<Value, B
     if let Some(v) = ir.usage.cache_creation_input_tokens {
         usage["cache_creation_input_tokens"] = json!(v);
     }
+    if let Some(v) = ir.usage.cache_creation_5m_input_tokens {
+        usage["cache_creation_5m_input_tokens"] = json!(v);
+    }
+    if let Some(v) = ir.usage.cache_creation_1h_input_tokens {
+        usage["cache_creation_1h_input_tokens"] = json!(v);
+    }
     if let Some(v) = ir.usage.cache_read_input_tokens {
         usage["cache_read_input_tokens"] = json!(v);
     }
@@ -364,6 +370,12 @@ fn render_chunk(chunk: &IRStreamChunk, ctx: &BridgeContext) -> Result<Vec<Bytes>
             let cache_creation = initial_usage
                 .as_ref()
                 .and_then(|u| u.cache_creation_input_tokens);
+            let cache_creation_5m = initial_usage
+                .as_ref()
+                .and_then(|u| u.cache_creation_5m_input_tokens);
+            let cache_creation_1h = initial_usage
+                .as_ref()
+                .and_then(|u| u.cache_creation_1h_input_tokens);
             let cache_read = initial_usage
                 .as_ref()
                 .and_then(|u| u.cache_read_input_tokens);
@@ -374,6 +386,12 @@ fn render_chunk(chunk: &IRStreamChunk, ctx: &BridgeContext) -> Result<Vec<Bytes>
             });
             if let Some(v) = cache_creation {
                 usage_json["cache_creation_input_tokens"] = json!(v);
+            }
+            if let Some(v) = cache_creation_5m {
+                usage_json["cache_creation_5m_input_tokens"] = json!(v);
+            }
+            if let Some(v) = cache_creation_1h {
+                usage_json["cache_creation_1h_input_tokens"] = json!(v);
             }
             if let Some(v) = cache_read {
                 usage_json["cache_read_input_tokens"] = json!(v);
@@ -458,6 +476,25 @@ fn render_chunk(chunk: &IRStreamChunk, ctx: &BridgeContext) -> Result<Vec<Bytes>
                 IRStopReason::Unknown(s) => s.as_str(),
             };
 
+            let mut usage_json = json!({
+                "output_tokens": usage.output_tokens,
+            });
+            if usage.input_tokens > 0 {
+                usage_json["input_tokens"] = json!(usage.input_tokens);
+            }
+            if let Some(v) = usage.cache_creation_input_tokens {
+                usage_json["cache_creation_input_tokens"] = json!(v);
+            }
+            if let Some(v) = usage.cache_creation_5m_input_tokens {
+                usage_json["cache_creation_5m_input_tokens"] = json!(v);
+            }
+            if let Some(v) = usage.cache_creation_1h_input_tokens {
+                usage_json["cache_creation_1h_input_tokens"] = json!(v);
+            }
+            if let Some(v) = usage.cache_read_input_tokens {
+                usage_json["cache_read_input_tokens"] = json!(v);
+            }
+
             vec![sse_frame(
                 "message_delta",
                 json!({
@@ -466,9 +503,7 @@ fn render_chunk(chunk: &IRStreamChunk, ctx: &BridgeContext) -> Result<Vec<Bytes>
                         "stop_reason": sr,
                         "stop_sequence": null,
                     },
-                    "usage": {
-                        "output_tokens": usage.output_tokens,
-                    }
+                    "usage": usage_json
                 }),
             )]
         }
@@ -886,11 +921,15 @@ mod tests {
                 input_tokens: 100,
                 output_tokens: 50,
                 cache_creation_input_tokens: Some(20),
+                cache_creation_5m_input_tokens: Some(15),
+                cache_creation_1h_input_tokens: Some(5),
                 cache_read_input_tokens: Some(60),
             },
         };
         let r = build_response(&ir, &default_ctx()).unwrap();
         assert_eq!(r["usage"]["cache_creation_input_tokens"], 20);
+        assert_eq!(r["usage"]["cache_creation_5m_input_tokens"], 15);
+        assert_eq!(r["usage"]["cache_creation_1h_input_tokens"], 5);
         assert_eq!(r["usage"]["cache_read_input_tokens"], 60);
     }
 

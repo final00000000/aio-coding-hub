@@ -1388,7 +1388,12 @@ pub(super) async fn run(mut input: RequestContext) -> Response {
                     }
                 }
             } else {
-                inject_provider_auth(&input.cli_key, effective_credential.trim(), &mut headers);
+                let auth_cli_key = if cx2cc_active {
+                    "codex"
+                } else {
+                    &input.cli_key
+                };
+                inject_provider_auth(auth_cli_key, effective_credential.trim(), &mut headers);
             }
             if use_codex_chatgpt_backend {
                 maybe_inject_codex_chatgpt_headers(
