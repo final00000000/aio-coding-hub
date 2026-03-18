@@ -389,6 +389,8 @@ fn create_oauth_provider_for_cas_test(db: &crate::db::Db, name: &str) -> i64 {
             limit_total_usd: None,
             tags: None,
             note: None,
+            source_provider_id: None,
+            bridge_type: None,
         },
     )
     .expect("create oauth provider")

@@ -63,6 +63,8 @@ function makeProvider(partial: Partial<ProviderSummary> = {}): ProviderSummary {
     oauth_email: null,
     oauth_expires_at: null,
     oauth_last_error: null,
+    source_provider_id: null,
+    bridge_type: null,
     ...partial,
   };
 }
@@ -88,6 +90,8 @@ function makeInitialValues(
     limit_total_usd: 25,
     tags: ["prod"],
     note: "copied",
+    source_provider_id: null,
+    bridge_type: null,
     ...partial,
   };
 }

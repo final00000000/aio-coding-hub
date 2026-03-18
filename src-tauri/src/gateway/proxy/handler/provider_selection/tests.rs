@@ -31,6 +31,8 @@ fn insert_provider(db: &crate::db::Db, name: &str, enabled: bool) -> providers::
             limit_total_usd: None,
             tags: None,
             note: None,
+            source_provider_id: None,
+            bridge_type: None,
         },
     )
     .expect("insert provider")

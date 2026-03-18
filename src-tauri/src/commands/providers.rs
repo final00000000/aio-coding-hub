@@ -40,6 +40,8 @@ pub(crate) struct ProviderUpsertInput {
     pub limit_total_usd: Option<f64>,
     pub tags: Option<Vec<String>>,
     pub note: Option<String>,
+    pub source_provider_id: Option<i64>,
+    pub bridge_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -77,7 +79,8 @@ fn provider_runtime_reset_decision(
     let sensitive_config_changed = previous.base_urls != next.base_urls
         || previous.base_url_mode != next.base_url_mode
         || previous.auth_mode != next.auth_mode
-        || submitted_api_key_changed(previous_api_key, submitted_api_key);
+        || submitted_api_key_changed(previous_api_key, submitted_api_key)
+        || previous.source_provider_id != next.source_provider_id;
 
     ProviderRuntimeResetDecision {
         clear_session_bindings: sensitive_config_changed,
@@ -128,6 +131,8 @@ pub(crate) async fn provider_upsert(
         limit_total_usd,
         tags,
         note,
+        source_provider_id,
+        bridge_type,
     } = input;
 
     let is_create = provider_id.is_none();
@@ -171,6 +176,8 @@ pub(crate) async fn provider_upsert(
                 limit_total_usd,
                 tags,
                 note,
+                source_provider_id,
+                bridge_type,
             },
         )?;
 
@@ -1182,6 +1189,8 @@ mod tests {
             oauth_email: None,
             oauth_expires_at: None,
             oauth_last_error: None,
+            source_provider_id: None,
+            bridge_type: None,
         };
 
         assert_eq!(
@@ -1243,6 +1252,8 @@ mod tests {
             oauth_email: None,
             oauth_expires_at: None,
             oauth_last_error: None,
+            source_provider_id: None,
+            bridge_type: None,
         };
 
         let mut next = previous.clone();

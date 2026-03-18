@@ -62,6 +62,8 @@ function makeProvider(
     oauth_email: partial.oauth_email ?? null,
     oauth_expires_at: partial.oauth_expires_at ?? null,
     oauth_last_error: partial.oauth_last_error ?? null,
+    source_provider_id: partial.source_provider_id ?? null,
+    bridge_type: partial.bridge_type ?? null,
   };
 }
 

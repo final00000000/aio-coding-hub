@@ -67,7 +67,12 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
     () => providersQuery.data ?? [],
     [providersQuery.data]
   );
+  const codexProvidersQuery = useProvidersListQuery("codex", { enabled: activeCli === "claude" });
   const providersLoading = providersQuery.isFetching;
+  const sourceProviderNamesById = useMemo(
+    () => Object.fromEntries((codexProvidersQuery.data ?? []).map((p) => [p.id, p.name])),
+    [codexProvidersQuery.data]
+  );
 
   const providersRef = useRef(providers);
   useEffect(() => {
@@ -385,9 +390,10 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
       setDuplicatingByProviderId((cur) => ({ ...cur, [provider.id]: true }));
 
       try {
-        const apiKey =
-          provider.auth_mode === "api_key" ? await providerGetApiKey(provider.id) : null;
-        if (provider.auth_mode === "api_key" && (!apiKey || !apiKey.trim())) {
+        const needsApiKeyCopy =
+          provider.auth_mode === "api_key" && provider.source_provider_id == null;
+        const apiKey = needsApiKeyCopy ? await providerGetApiKey(provider.id) : null;
+        if (needsApiKeyCopy && (!apiKey || !apiKey.trim())) {
           toast("复制失败：原 Provider 未保存 API Key");
           return;
         }
@@ -603,6 +609,11 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
                     <SortableProviderCard
                       key={provider.id}
                       provider={provider}
+                      sourceProviderName={
+                        provider.source_provider_id != null
+                          ? (sourceProviderNamesById[provider.source_provider_id] ?? null)
+                          : undefined
+                      }
                       circuit={circuitByProviderId[provider.id] ?? null}
                       circuitResetting={Boolean(circuitResetting[provider.id]) || circuitLoading}
                       onToggleEnabled={toggleProviderEnabled}
@@ -645,6 +656,7 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
           }}
           cliKey={createDialogState.cliKey}
           initialValues={createDialogState.initialValues}
+          codexProviders={codexProvidersQuery.data ?? []}
           onSaved={(cliKey) => {
             queryClient.invalidateQueries({ queryKey: providersKeys.list(cliKey) });
             queryClient.invalidateQueries({ queryKey: gatewayKeys.circuitStatus(cliKey) });
@@ -660,6 +672,7 @@ export function ProvidersView({ activeCli, setActiveCli }: ProvidersViewProps) {
             if (!nextOpen) setEditTarget(null);
           }}
           provider={editTarget}
+          codexProviders={codexProvidersQuery.data ?? []}
           onSaved={(cliKey) => {
             queryClient.invalidateQueries({ queryKey: providersKeys.list(cliKey) });
             queryClient.invalidateQueries({ queryKey: gatewayKeys.circuitStatus(cliKey) });

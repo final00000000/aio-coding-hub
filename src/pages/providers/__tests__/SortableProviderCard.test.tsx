@@ -55,6 +55,8 @@ function makeProvider(partial: Partial<ProviderSummary> = {}): ProviderSummary {
     oauth_email: null,
     oauth_expires_at: null,
     oauth_last_error: null,
+    source_provider_id: null,
+    bridge_type: null,
     ...partial,
   };
 }
@@ -250,6 +252,23 @@ describe("pages/providers/SortableProviderCard", () => {
 
     expect(screen.getByText("prod")).toBeInTheDocument();
     expect(screen.getByText("cn")).toBeInTheDocument();
+  });
+
+  it("keeps cx2cc source label without the top translation badge", () => {
+    renderCard(
+      {
+        source_provider_id: 7,
+      },
+      {
+        sourceProviderName: "Lisa",
+      }
+    );
+
+    expect(screen.getAllByText((_, el) => el?.textContent === "源: Lisa").length).toBeGreaterThan(
+      0
+    );
+    expect(screen.queryByText("CX2CC 转译")).not.toBeInTheDocument();
+    expect(screen.getByText("CX2CC")).toBeInTheDocument();
   });
 
   it("renders ping mode label", () => {

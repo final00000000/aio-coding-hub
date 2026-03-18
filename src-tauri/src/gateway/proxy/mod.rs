@@ -12,6 +12,7 @@ mod handler;
 mod http_util;
 mod logging;
 mod model_rewrite;
+pub(in crate::gateway) mod protocol_bridge;
 pub(in crate::gateway) mod provider_router;
 mod request_context;
 mod request_end;

@@ -261,6 +261,8 @@ pub fn provider_upsert_json<R: tauri::Runtime>(
             limit_total_usd,
             tags: None,
             note: None,
+            source_provider_id: None,
+            bridge_type: None,
         },
     )?;
     serialize_json(provider)
