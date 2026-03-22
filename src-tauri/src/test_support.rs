@@ -159,6 +159,18 @@ pub fn codex_config_toml_path<R: tauri::Runtime>(
     crate::infra::codex_paths::codex_config_toml_path(app)
 }
 
+pub fn codex_home_dir_follow_env_or_default<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+) -> crate::shared::error::AppResult<PathBuf> {
+    crate::infra::codex_paths::codex_home_dir_follow_env_or_default(app)
+}
+
+pub fn codex_home_dir_user_default<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+) -> crate::shared::error::AppResult<PathBuf> {
+    crate::infra::codex_paths::codex_home_dir_user_default(app)
+}
+
 pub fn codex_config_toml_raw_set<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     toml: String,
