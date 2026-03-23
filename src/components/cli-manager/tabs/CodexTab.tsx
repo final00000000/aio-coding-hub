@@ -17,6 +17,8 @@ import {
   type SimpleCliInfo,
 } from "../../../services/cliManager";
 import type { AppSettings, CodexHomeMode } from "../../../services/settings";
+import { normalizeCustomCodexHome, buildConfigTomlPath } from "../../../utils/codexPaths";
+import { isWindowsRuntime } from "../../../utils/platform";
 import { cn } from "../../../utils/cn";
 import { Button } from "../../../ui/Button";
 import { Card } from "../../../ui/Card";
@@ -84,14 +86,6 @@ function isGpt54Model(model: string | null | undefined) {
   return (model ?? "").trim() === GPT_54_MODEL;
 }
 
-function normalizeCustomCodexHome(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) return "";
-
-  const normalized = trimmed.replace(/[\\/]+config\.toml$/i, "");
-  return normalized.trim();
-}
-
 function validateCustomCodexHome(value: string): string | null {
   const trimmed = value.trim();
   const normalized = normalizeCustomCodexHome(trimmed);
@@ -109,15 +103,6 @@ function validateCustomCodexHome(value: string): string | null {
   }
 
   return null;
-}
-
-function buildConfigTomlPath(dir: string) {
-  const trimmed = normalizeCustomCodexHome(dir);
-  if (!trimmed) return "";
-
-  const hasTrailingSeparator = /[\\/]$/.test(trimmed);
-  const separator = hasTrailingSeparator ? "" : trimmed.includes("\\") ? "\\" : "/";
-  return `${trimmed}${separator}config.toml`;
 }
 
 function normalizeComparablePath(path: string) {
@@ -655,7 +640,7 @@ export function CliManagerCodexTab({
               </div>
             )}
 
-            {codexConfig ? (
+            {codexConfig && isWindowsRuntime() ? (
               <div className="rounded-xl border border-slate-200/80 bg-white/80 p-4 dark:border-slate-700 dark:bg-slate-900/20">
                 <div className="flex flex-col gap-4">
                   <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">

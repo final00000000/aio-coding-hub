@@ -3,7 +3,7 @@
 use crate::app_paths;
 use crate::shared::error::AppResult;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{OnceLock, RwLock};
 use std::time::{Duration, Instant};
@@ -292,19 +292,28 @@ fn normalize_codex_home_override(raw: &str) -> String {
         return String::new();
     }
 
-    let path = Path::new(trimmed);
-    let Some(file_name) = path.file_name().and_then(|value| value.to_str()) else {
-        return trimmed.to_string();
-    };
+    // Strip trailing config.toml (case-insensitive) regardless of separator
+    // style, since the value may contain Windows backslashes even on non-Windows
+    // hosts (the setting is always about a Windows-side path).
+    let stripped = trimmed
+        .strip_suffix("config.toml")
+        .or_else(|| trimmed.strip_suffix("config.TOML"))
+        .or_else(|| trimmed.strip_suffix("Config.toml"))
+        .or_else(|| {
+            let lower = trimmed.to_ascii_lowercase();
+            if lower.ends_with("config.toml") {
+                Some(&trimmed[..trimmed.len() - "config.toml".len()])
+            } else {
+                None
+            }
+        })
+        .unwrap_or(trimmed);
 
-    if !file_name.eq_ignore_ascii_case("config.toml") {
+    let stripped = stripped.trim_end_matches(['/', '\\']);
+    if stripped.is_empty() {
         return trimmed.to_string();
     }
-
-    path.parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-        .map(|parent| parent.to_string_lossy().to_string())
-        .unwrap_or_else(|| trimmed.to_string())
+    stripped.to_string()
 }
 
 fn sanitize_codex_home_override(settings: &mut AppSettings) -> bool {
@@ -967,11 +976,6 @@ pub fn write<R: tauri::Runtime>(
     settings: &AppSettings,
 ) -> AppResult<AppSettings> {
     let mut settings = settings.clone();
-    settings.codex_home_mode = match settings.codex_home_mode {
-        CodexHomeMode::UserHomeDefault => CodexHomeMode::UserHomeDefault,
-        CodexHomeMode::FollowCodexHome => CodexHomeMode::FollowCodexHome,
-        CodexHomeMode::Custom => CodexHomeMode::Custom,
-    };
     settings.codex_home_override = normalize_codex_home_override(&settings.codex_home_override);
     if settings.codex_home_mode != CodexHomeMode::Custom {
         settings.codex_home_override.clear();
@@ -1134,6 +1138,15 @@ pub fn write<R: tauri::Runtime>(
     }
 
     Ok(settings)
+}
+
+/// Clear the in-process settings cache.  Only available for integration tests
+/// where each `TestApp` uses a distinct temp directory.
+pub fn clear_cache() {
+    let cache = SETTINGS_CACHE.get_or_init(|| RwLock::new(None));
+    if let Ok(mut guard) = cache.write() {
+        *guard = None;
+    }
 }
 
 #[cfg(test)]
@@ -1669,6 +1682,7 @@ mod tests {
     #[test]
     fn sanitize_codex_home_override_trims_and_normalizes() {
         let mut s = AppSettings {
+            codex_home_mode: CodexHomeMode::Custom,
             codex_home_override: " ~/.codex/config.toml ".to_string(),
             ..Default::default()
         };

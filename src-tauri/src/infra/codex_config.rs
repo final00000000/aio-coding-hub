@@ -872,6 +872,7 @@ fn normalize_toml_layout(lines: &mut Vec<String>) {
     *lines = out;
 }
 
+#[allow(clippy::too_many_arguments)]
 fn make_state_from_bytes(
     config_dir: String,
     config_path: String,

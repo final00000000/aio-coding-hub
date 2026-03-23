@@ -15,15 +15,7 @@ import { Switch } from "../../ui/Switch";
 import { Button } from "../../ui/Button";
 import { cn } from "../../utils/cn";
 import { Boxes, RefreshCw, Info } from "lucide-react";
-
-function buildConfigTomlPath(dir: string) {
-  const trimmed = dir.trim();
-  if (!trimmed) return "";
-
-  const hasTrailingSeparator = /[\\/]$/.test(trimmed);
-  const separator = hasTrailingSeparator ? "" : trimmed.includes("\\") ? "\\" : "/";
-  return `${trimmed}${separator}config.toml`;
-}
+import { buildConfigTomlPath } from "../../utils/codexPaths";
 
 export type WslSettingsCardProps = {
   available: boolean;

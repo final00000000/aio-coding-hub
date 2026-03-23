@@ -2,6 +2,10 @@
 
 use std::path::PathBuf;
 
+pub fn clear_settings_cache() {
+    crate::settings::clear_cache();
+}
+
 fn serialize_json(
     value: impl serde::Serialize,
 ) -> crate::shared::error::AppResult<serde_json::Value> {
