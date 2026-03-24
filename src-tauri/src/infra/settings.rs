@@ -304,19 +304,21 @@ fn normalize_codex_home_override(raw: &str) -> String {
         return String::new();
     }
 
-    let path = Path::new(trimmed);
-    let Some(file_name) = path.file_name().and_then(|value| value.to_str()) else {
-        return trimmed.to_string();
-    };
-
-    if !file_name.eq_ignore_ascii_case("config.toml") {
-        return trimmed.to_string();
+    if trimmed.eq_ignore_ascii_case("config.toml") {
+        return String::new();
     }
 
-    path.parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-        .map(|parent| parent.to_string_lossy().to_string())
-        .unwrap_or_else(|| trimmed.to_string())
+    for suffix in ["/config.toml", "\\config.toml"] {
+        if trimmed.len() > suffix.len()
+            && trimmed[trimmed.len() - suffix.len()..].eq_ignore_ascii_case(suffix)
+        {
+            return trimmed[..trimmed.len() - suffix.len()]
+                .trim_end_matches(['/', '\\'])
+                .to_string();
+        }
+    }
+
+    trimmed.to_string()
 }
 
 fn sanitize_codex_home_override(settings: &mut AppSettings) -> bool {
@@ -1656,6 +1658,7 @@ mod tests {
     #[test]
     fn sanitize_codex_home_override_trims_and_normalizes() {
         let mut s = AppSettings {
+            codex_home_mode: CodexHomeMode::Custom,
             codex_home_override: " ~/.codex/config.toml ".to_string(),
             ..Default::default()
         };
