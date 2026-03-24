@@ -3,6 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { CliManagerCodexTab } from "../CodexTab";
 import { createTestAppSettings } from "../../../../test/fixtures/settings";
 
+vi.mock("../../../../utils/platform", () => ({
+  isWindowsRuntime: () => true,
+}));
+
 function createCodexInfo(overrides: Partial<any> = {}) {
   return {
     found: true,

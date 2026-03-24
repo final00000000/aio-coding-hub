@@ -962,11 +962,6 @@ pub fn write<R: tauri::Runtime>(
     settings: &AppSettings,
 ) -> AppResult<AppSettings> {
     let mut settings = settings.clone();
-    settings.codex_home_mode = match settings.codex_home_mode {
-        CodexHomeMode::UserHomeDefault => CodexHomeMode::UserHomeDefault,
-        CodexHomeMode::FollowCodexHome => CodexHomeMode::FollowCodexHome,
-        CodexHomeMode::Custom => CodexHomeMode::Custom,
-    };
     settings.codex_home_override = normalize_codex_home_override(&settings.codex_home_override);
     if settings.codex_home_mode != CodexHomeMode::Custom {
         settings.codex_home_override.clear();
@@ -1123,6 +1118,15 @@ pub fn write<R: tauri::Runtime>(
     cache_settings(&path, &settings);
 
     Ok(settings)
+}
+
+/// Clear the in-process settings cache.  Only available for integration tests
+/// where each `TestApp` uses a distinct temp directory.
+pub fn clear_cache() {
+    let cache = SETTINGS_CACHE.get_or_init(|| RwLock::new(None));
+    if let Ok(mut guard) = cache.write() {
+        *guard = None;
+    }
 }
 
 #[cfg(test)]
