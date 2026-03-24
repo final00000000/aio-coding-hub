@@ -78,11 +78,23 @@ static LOG_RETENTION_DAYS_FAIL_OPEN_WARNED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone)]
 struct CachedSettings {
+    path: PathBuf,
     data: AppSettings,
     last_updated: Instant,
 }
 
 static SETTINGS_CACHE: OnceLock<RwLock<Option<CachedSettings>>> = OnceLock::new();
+
+fn cache_settings(path: &Path, settings: &AppSettings) {
+    let cache = SETTINGS_CACHE.get_or_init(|| RwLock::new(None));
+    if let Ok(mut guard) = cache.write() {
+        *guard = Some(CachedSettings {
+            path: path.to_path_buf(),
+            data: settings.clone(),
+            last_updated: Instant::now(),
+        });
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
@@ -790,16 +802,15 @@ fn canonical_settings_json(settings: &AppSettings) -> AppResult<serde_json::Valu
 
 pub fn read<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> AppResult<AppSettings> {
     let cache = SETTINGS_CACHE.get_or_init(|| RwLock::new(None));
+    let path = settings_path(app)?;
 
     if let Ok(guard) = cache.read() {
         if let Some(cached) = guard.as_ref() {
-            if cached.last_updated.elapsed() < CACHE_TTL {
+            if cached.path == path && cached.last_updated.elapsed() < CACHE_TTL {
                 return Ok(cached.data.clone());
             }
         }
     }
-
-    let path = settings_path(app)?;
 
     if !path.exists() {
         let legacy_path = legacy_settings_path(app)?;
@@ -861,26 +872,14 @@ pub fn read<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> AppResult<AppSettin
                 // best-effort: persist sanitized defaults
             }
             let _ = write(app, &settings);
-
-            if let Ok(mut guard) = cache.write() {
-                *guard = Some(CachedSettings {
-                    data: settings.clone(),
-                    last_updated: Instant::now(),
-                });
-            }
+            cache_settings(&path, &settings);
             return Ok(settings);
         }
 
         let settings = AppSettings::default();
         // Best-effort: create default settings.json on first read to make the config discoverable/editable.
         let _ = write(app, &settings);
-
-        if let Ok(mut guard) = cache.write() {
-            *guard = Some(CachedSettings {
-                data: settings.clone(),
-                last_updated: Instant::now(),
-            });
-        }
+        cache_settings(&path, &settings);
         return Ok(settings);
     }
 
@@ -935,13 +934,7 @@ pub fn read<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> AppResult<AppSettin
         // Best-effort: persist repaired values while keeping read semantics.
         let _ = write(app, &settings);
     }
-
-    if let Ok(mut guard) = cache.write() {
-        *guard = Some(CachedSettings {
-            data: settings.clone(),
-            last_updated: Instant::now(),
-        });
-    }
+    cache_settings(&path, &settings);
 
     Ok(settings)
 }
@@ -1125,13 +1118,7 @@ pub fn write<R: tauri::Runtime>(
         let _ = std::fs::remove_file(&backup_path);
     }
 
-    let cache = SETTINGS_CACHE.get_or_init(|| RwLock::new(None));
-    if let Ok(mut guard) = cache.write() {
-        *guard = Some(CachedSettings {
-            data: settings.clone(),
-            last_updated: Instant::now(),
-        });
-    }
+    cache_settings(&path, &settings);
 
     Ok(settings)
 }
