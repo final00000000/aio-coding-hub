@@ -44,7 +44,7 @@ use super::super::{
 use crate::usage;
 use axum::{
     body::{Body, Bytes},
-    http::{header, HeaderMap, HeaderValue, StatusCode},
+    http::{header, HeaderMap, HeaderName, HeaderValue, StatusCode},
     response::{IntoResponse, Response},
 };
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -406,6 +406,10 @@ fn parse_codex_chatgpt_account_id(id_token: Option<&str>) -> Option<String> {
 }
 
 fn maybe_inject_codex_chatgpt_headers(headers: &mut HeaderMap, account_id: Option<&str>) {
+    headers.insert(
+        header::USER_AGENT,
+        HeaderValue::from_static(crate::gateway::oauth::DEFAULT_OAUTH_USER_AGENT),
+    );
     if !headers.contains_key("originator") {
         headers.insert(
             "originator",
@@ -421,6 +425,39 @@ fn maybe_inject_codex_chatgpt_headers(headers: &mut HeaderMap, account_id: Optio
     };
     if let Ok(header_value) = HeaderValue::from_str(value) {
         headers.insert("chatgpt-account-id", header_value);
+    }
+}
+
+fn strip_headers_where(headers: &mut HeaderMap, should_strip: impl Fn(&str) -> bool) {
+    let keys_to_remove: Vec<HeaderName> = headers
+        .keys()
+        .filter(|name| should_strip(name.as_str()))
+        .cloned()
+        .collect();
+
+    for key in keys_to_remove {
+        headers.remove(key);
+    }
+}
+
+fn strip_incompatible_protocol_headers(
+    source_cli_key: &str,
+    target_cli_key: &str,
+    headers: &mut HeaderMap,
+) {
+    if source_cli_key == target_cli_key {
+        return;
+    }
+
+    match (source_cli_key, target_cli_key) {
+        ("claude", "codex") => {
+            strip_headers_where(headers, |name| {
+                name.starts_with("anthropic-")
+                    || name.starts_with("x-stainless-")
+                    || name.starts_with("x-claude-")
+            });
+        }
+        _ => {}
     }
 }
 
@@ -1016,6 +1053,12 @@ pub(super) async fn run(mut input: RequestContext) -> Response {
                                         use_codex_chatgpt_backend = true;
                                     }
 
+                                    let source_provider_name = if source.name.trim().is_empty() {
+                                        format!("Provider #{}", source.id)
+                                    } else {
+                                        source.name.clone()
+                                    };
+
                                     tracing::info!(
                                         trace_id = %input.trace_id,
                                         provider_id = provider_id,
@@ -1027,7 +1070,9 @@ pub(super) async fn run(mut input: RequestContext) -> Response {
                                         &input.state.app,
                                         "info",
                                         "CX2CC_TRANSLATED",
-                                        format!("[CX2CC] translated → model={openai_model}, provider={provider_name_base}"),
+                                        format!(
+                                            "[CX2CC] translated → model={openai_model}, bridge={provider_name_base}, source={source_provider_name}"
+                                        ),
                                     );
                                     // DEBUG: dump translated body for troubleshooting.
                                     {
@@ -1347,6 +1392,20 @@ pub(super) async fn run(mut input: RequestContext) -> Response {
             headers.remove("x-goog-api-key");
             headers.remove("x-goog-api-client");
 
+            let upstream_cli_key = if cx2cc_active {
+                cx2cc_source
+                    .as_ref()
+                    .map(|(_, source_cli_key)| source_cli_key.as_str())
+                    .unwrap_or("codex")
+            } else {
+                input.cli_key.as_str()
+            };
+            strip_incompatible_protocol_headers(
+                input.cli_key.as_str(),
+                upstream_cli_key,
+                &mut headers,
+            );
+
             // For OAuth providers, use the adapter's inject_upstream_headers which adds
             // provider-specific headers (e.g., originator for Codex, anthropic-beta for Claude).
             // For api_key providers, use the legacy inject_provider_auth.
@@ -1451,14 +1510,29 @@ pub(super) async fn run(mut input: RequestContext) -> Response {
                         "upstream response received"
                     );
                     if cx2cc_active {
+                        let source_provider_id = cx2cc_source.as_ref().map(|(source, _)| source.id);
+                        let source_provider_name = cx2cc_source
+                            .as_ref()
+                            .map(|(source, _)| {
+                                if source.name.trim().is_empty() {
+                                    format!("Provider #{}", source.id)
+                                } else {
+                                    source.name.clone()
+                                }
+                            })
+                            .unwrap_or_else(|| "<unknown>".to_string());
                         emit_gateway_log(
                             &input.state.app,
                             "info",
                             "CX2CC_UPSTREAM_RESPONSE",
                             format!(
-                                "[CX2CC] upstream response received trace_id={} provider_id={} status={} content_type={:?} event_stream={} anthropic_stream_requested={}",
+                                "[CX2CC] upstream response received trace_id={} bridge_provider_id={} source_provider_id={} source_provider={} status={} content_type={:?} event_stream={} anthropic_stream_requested={}",
                                 input.trace_id,
                                 provider_id,
+                                source_provider_id
+                                    .map(|value| value.to_string())
+                                    .unwrap_or_else(|| "-".to_string()),
+                                source_provider_name,
                                 status.as_u16(),
                                 response_content_type,
                                 is_event_stream(&response_headers),
@@ -1717,9 +1791,11 @@ pub(super) async fn run(mut input: RequestContext) -> Response {
 mod tests {
     use super::{
         codex_chatgpt_request_compat_value, maybe_apply_codex_chatgpt_request_compat,
-        should_apply_claude_model_mapping,
+        maybe_inject_codex_chatgpt_headers, should_apply_claude_model_mapping,
+        strip_incompatible_protocol_headers,
     };
     use axum::body::Bytes;
+    use axum::http::{header, HeaderMap, HeaderValue};
     use serde_json::json;
 
     #[test]
@@ -1788,5 +1864,67 @@ mod tests {
         assert!(next.get("max_output_tokens").is_none());
         assert!(next.get("temperature").is_none());
         assert!(strip_request_content_encoding);
+    }
+
+    #[test]
+    fn strip_incompatible_protocol_headers_removes_claude_specific_headers_for_codex() {
+        let mut headers = HeaderMap::new();
+        headers.insert("anthropic-version", HeaderValue::from_static("2023-06-01"));
+        headers.insert(
+            "anthropic-beta",
+            HeaderValue::from_static("claude-code-20250219"),
+        );
+        headers.insert(
+            "x-stainless-helper-method",
+            HeaderValue::from_static("stream"),
+        );
+        headers.insert("x-claude-trace", HeaderValue::from_static("trace-1"));
+        headers.insert(
+            header::ACCEPT,
+            HeaderValue::from_static("text/event-stream"),
+        );
+
+        strip_incompatible_protocol_headers("claude", "codex", &mut headers);
+
+        assert!(!headers.contains_key("anthropic-version"));
+        assert!(!headers.contains_key("anthropic-beta"));
+        assert!(!headers.contains_key("x-stainless-helper-method"));
+        assert!(!headers.contains_key("x-claude-trace"));
+        assert_eq!(
+            headers
+                .get(header::ACCEPT)
+                .and_then(|value| value.to_str().ok()),
+            Some("text/event-stream")
+        );
+    }
+
+    #[test]
+    fn codex_chatgpt_identity_headers_override_user_agent_and_originator() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::USER_AGENT,
+            HeaderValue::from_static("Claude-Code/1.0"),
+        );
+
+        maybe_inject_codex_chatgpt_headers(&mut headers, Some("acct_123"));
+
+        assert_eq!(
+            headers
+                .get(header::USER_AGENT)
+                .and_then(|value| value.to_str().ok()),
+            Some(crate::gateway::oauth::DEFAULT_OAUTH_USER_AGENT)
+        );
+        assert_eq!(
+            headers
+                .get("originator")
+                .and_then(|value| value.to_str().ok()),
+            Some("codex_cli_rs")
+        );
+        assert_eq!(
+            headers
+                .get("chatgpt-account-id")
+                .and_then(|value| value.to_str().ok()),
+            Some("acct_123")
+        );
     }
 }
