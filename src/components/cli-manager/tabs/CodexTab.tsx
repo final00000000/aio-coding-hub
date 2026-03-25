@@ -218,6 +218,7 @@ export function CliManagerCodexTab({
 
   const validateSeqRef = useRef(0);
   const validateTimerRef = useRef<number | null>(null);
+  const lastTomlConfigPathRef = useRef<string | null>(null);
 
   const validateToml = useCallback(
     async (toml: string): Promise<CodexConfigTomlValidationResult | null> => {
@@ -403,6 +404,32 @@ export function CliManagerCodexTab({
     followCodexHomeResolvedDir,
     userDefaultResolvedHomeDir,
   ]);
+
+  useEffect(() => {
+    const nextPath = codexConfigToml?.config_path ?? null;
+    const prevPath = lastTomlConfigPathRef.current;
+
+    if (!nextPath) {
+      lastTomlConfigPathRef.current = null;
+      return;
+    }
+
+    if (prevPath && prevPath !== nextPath) {
+      if (validateTimerRef.current) {
+        window.clearTimeout(validateTimerRef.current);
+        validateTimerRef.current = null;
+      }
+
+      validateSeqRef.current += 1;
+      setTomlDraft(codexConfigToml?.toml ?? "");
+      setTomlDirty(false);
+      setTomlValidating(false);
+      setTomlValidation(null);
+      setTomlEditEnabled(false);
+    }
+
+    lastTomlConfigPathRef.current = nextPath;
+  }, [codexConfigToml?.config_path, codexConfigToml?.toml]);
 
   useEffect(() => {
     if (!codexConfigToml) return;
