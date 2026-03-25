@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { cliManagerCodexConfigTomlValidate } from "../../../../services/cliManager";
 import { CliManagerCodexTab } from "../CodexTab";
 import { createTestAppSettings } from "../../../../test/fixtures/settings";
 
@@ -7,6 +8,29 @@ vi.mock("../../../../utils/platform", () => ({
   isWindowsRuntime: () => true,
 }));
 
+vi.mock("../../../../ui/CodeEditor", () => ({
+  CodeEditor: ({ value, onChange, readOnly }: any) => (
+    <textarea
+      aria-label="mock-code-editor"
+      value={value}
+      readOnly={readOnly}
+      onChange={(e) => onChange?.(e.currentTarget.value)}
+    />
+  ),
+}));
+
+vi.mock("../../../../services/cliManager", async () => {
+  const actual = await vi.importActual<typeof import("../../../../services/cliManager")>(
+    "../../../../services/cliManager"
+  );
+  return {
+    ...actual,
+    cliManagerCodexConfigTomlValidate: vi.fn().mockResolvedValue({
+      ok: true,
+      error: null,
+    }),
+  };
+});
 function createCodexInfo(overrides: Partial<any> = {}) {
   return {
     found: true,
@@ -570,5 +594,76 @@ describe("components/cli-manager/tabs/CodexTab", () => {
     expect(persistCodexConfig).toHaveBeenCalledWith({
       model_auto_compact_token_limit: null,
     });
+  });
+
+  it("resets toml draft when codex config path changes", async () => {
+    vi.mocked(cliManagerCodexConfigTomlValidate).mockResolvedValue({
+      ok: true,
+      error: null,
+    });
+
+    const { rerender } = render(
+      <CliManagerCodexTab
+        codexAvailable="available"
+        codexLoading={false}
+        codexConfigLoading={false}
+        codexConfigSaving={false}
+        codexConfigTomlLoading={false}
+        codexConfigTomlSaving={false}
+        codexInfo={createCodexInfo()}
+        codexConfig={createCodexConfig({
+          config_dir: "C:\\Users\\MyPC\\.codex",
+          config_path: "C:\\Users\\MyPC\\.codex\\config.toml",
+        })}
+        codexConfigToml={{
+          config_path: "C:\\Users\\MyPC\\.codex\\config.toml",
+          exists: true,
+          toml: 'model = "gpt-5"\n',
+        }}
+        refreshCodex={vi.fn()}
+        openCodexConfigDir={vi.fn()}
+        persistCodexConfig={vi.fn()}
+        persistCodexConfigToml={vi.fn().mockResolvedValue(true)}
+      />
+    );
+
+    fireEvent.click(screen.getByText("高级配置（config.toml）"));
+    fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+    await screen.findByRole("button", { name: "取消" });
+    fireEvent.change(await screen.findByLabelText("mock-code-editor"), {
+      target: { value: 'model = "dirty-old"\n' },
+    });
+
+    expect(screen.getByLabelText("mock-code-editor")).toHaveValue('model = "dirty-old"\n');
+    expect(screen.getByRole("button", { name: "取消" })).toBeInTheDocument();
+
+    rerender(
+      <CliManagerCodexTab
+        codexAvailable="available"
+        codexLoading={false}
+        codexConfigLoading={false}
+        codexConfigSaving={false}
+        codexConfigTomlLoading={false}
+        codexConfigTomlSaving={false}
+        codexInfo={createCodexInfo()}
+        codexConfig={createCodexConfig({
+          config_dir: "D:\\Work\\.codex",
+          config_path: "D:\\Work\\.codex\\config.toml",
+        })}
+        codexConfigToml={{
+          config_path: "D:\\Work\\.codex\\config.toml",
+          exists: true,
+          toml: 'model = "gpt-5.4"\n',
+        }}
+        refreshCodex={vi.fn()}
+        openCodexConfigDir={vi.fn()}
+        persistCodexConfig={vi.fn()}
+        persistCodexConfigToml={vi.fn().mockResolvedValue(true)}
+      />
+    );
+
+    expect(screen.getByLabelText("mock-code-editor")).toHaveValue('model = "gpt-5.4"\n');
+    expect(screen.getByRole("button", { name: "编辑" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "取消" })).not.toBeInTheDocument();
   });
 });
