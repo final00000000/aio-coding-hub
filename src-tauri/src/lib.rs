@@ -216,7 +216,7 @@ pub fn run() {
                     }
                 };
 
-                let _ = app_handle.emit("gateway:status", status.clone());
+                let _ = app_handle.emit(crate::gateway::events::GATEWAY_STATUS_EVENT_NAME, status.clone());
 
                 // WSL auto-detect and auto-configure (Windows only, gated by wsl_auto_config)
                 #[cfg(windows)]
@@ -465,10 +465,23 @@ pub fn export_typescript_bindings(output_path: &str) -> Result<(), String> {
             specta_typescript::Typescript::default()
                 .header(
                     "/* eslint-disable */
-// @ts-nocheck",
+// @ts-nocheck
+// NOTE: Partial IPC contract only. Currently exports settings_get, settings_set, providers_list, and provider_upsert.",
                 )
                 .bigint(specta_typescript::BigIntExportBehavior::Number),
             output_path,
         )
         .map_err(|error| format!("failed to export specta TypeScript bindings: {error}"))
+}
+
+/// Specta type export smoke test.
+///
+/// 仅用于手动重新导出前端 bindings：
+/// `cargo test export_bindings -- --ignored`
+#[cfg(test)]
+#[test]
+#[ignore = "run manually: cargo test export_bindings -- --ignored"]
+fn export_bindings() {
+    export_typescript_bindings("../src/generated/bindings.ts")
+        .expect("failed to export specta TypeScript bindings");
 }
