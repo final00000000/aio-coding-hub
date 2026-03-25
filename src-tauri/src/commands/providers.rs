@@ -477,12 +477,12 @@ fn create_claude_terminal_launch_command<R: tauri::Runtime>(
 
 fn build_claude_launch_assets(script_path: &Path, config_path: &Path) -> (String, String) {
     if cfg!(target_os = "windows") {
-        let script_content = build_claude_launcher_powershell_script(config_path, &script_path);
-        let launch_command = build_powershell_launch_command(&script_path);
+        let script_content = build_claude_launcher_powershell_script(config_path, script_path);
+        let launch_command = build_powershell_launch_command(script_path);
         (script_content, launch_command)
     } else {
-        let script_content = build_claude_launcher_bash_script(config_path, &script_path);
-        let launch_command = build_bash_launch_command(&script_path);
+        let script_content = build_claude_launcher_bash_script(config_path, script_path);
+        let launch_command = build_bash_launch_command(script_path);
         (script_content, launch_command)
     }
 }
