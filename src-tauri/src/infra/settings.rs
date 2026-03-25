@@ -815,8 +815,8 @@ pub fn read<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> AppResult<AppSettin
     }
 
     if !path.exists() {
-        let legacy_path = legacy_settings_path(app)?;
-        if legacy_path.exists() {
+        let legacy_path = legacy_settings_path(app).ok();
+        if let Some(legacy_path) = legacy_path.filter(|legacy_path| legacy_path.exists()) {
             let content = std::fs::read_to_string(&legacy_path)
                 .map_err(|e| format!("failed to read settings: {e}"))?;
             let (settings, schema_version_present, raw_settings_json) =
