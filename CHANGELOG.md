@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.33.3](https://github.com/dyndynjyxa/aio-coding-hub/compare/aio-coding-hub-v0.33.2...aio-coding-hub-v0.33.3) (2026-03-24)
+
+
+### Features
+
+* **gateway:** 优化协议兼容性处理与请求头管理 ([6be9161](https://github.com/dyndynjyxa/aio-coding-hub/commit/6be91613fbc0bfcd9b87fe419a8f9ad08178a1f7))
+
+
+### Bug Fixes
+
+* **app:** 修复并增强数据库重置和WSL配置功能 ([caf135a](https://github.com/dyndynjyxa/aio-coding-hub/commit/caf135a98905bcc4594f9f6c3729297e3c6dcf1c))
+* **ci:** 优化 pre-push 钩子和测试命令的标准输入配置 ([d14abe2](https://github.com/dyndynjyxa/aio-coding-hub/commit/d14abe2ce2f35e53ea0ab750e8598aafb65f33ed))
+* **tauri:** 修复可执行文件查找时的权限判断问题 ([e3815ce](https://github.com/dyndynjyxa/aio-coding-hub/commit/e3815cec86d2f3bd8635fd7f95de8e30b5f36fa9))
+
+## [0.33.2](https://github.com/dyndynjyxa/aio-coding-hub/compare/aio-coding-hub-v0.33.1...aio-coding-hub-v0.33.2) (2026-03-24)
+
+
+### Bug Fixes
+
+* **codex:** resolve oauth login failure and stale provider names ([#116](https://github.com/dyndynjyxa/aio-coding-hub/issues/116)) ([48d647e](https://github.com/dyndynjyxa/aio-coding-hub/commit/48d647ef429232562c9b56e88d8a37f57960604a))
+* **release:** keep Cargo.lock synced for release PRs ([c5bd423](https://github.com/dyndynjyxa/aio-coding-hub/commit/c5bd42355641cb8dcef13a1fa04d41795aeb5c82))
+
+## [0.33.1](https://github.com/dyndynjyxa/aio-coding-hub/compare/aio-coding-hub-v0.33.0...aio-coding-hub-v0.33.1) (2026-03-24)
+
+
+### Features
+
+* **codex:** support configurable Windows .codex locations ([#114](https://github.com/dyndynjyxa/aio-coding-hub/issues/114)) ([a8c77cd](https://github.com/dyndynjyxa/aio-coding-hub/commit/a8c77cdebdca52f7bb5ca758837c2b04bac14e3f))
+* **skills:** support repo market and local CLI workflows ([3a0a24f](https://github.com/dyndynjyxa/aio-coding-hub/commit/3a0a24f13405d493237402dace175807b42de462))
+
 ## [0.33.0](https://github.com/dyndynjyxa/aio-coding-hub/compare/aio-coding-hub-v0.32.8...aio-coding-hub-v0.33.0) (2026-03-22)
 
 

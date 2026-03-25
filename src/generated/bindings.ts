@@ -97,6 +97,7 @@ export type ClaudeModels = {
   sonnet_model?: string | null;
   opus_model?: string | null;
 };
+export type CodexHomeMode = "user_home_default" | "follow_codex_home" | "custom";
 export type DailyResetMode = "fixed" | "rolling";
 export type GatewayListenMode = "localhost" | "wsl_auto" | "lan" | "custom";
 export type CodexHomeMode = "user_home_default" | "follow_codex_home" | "custom";

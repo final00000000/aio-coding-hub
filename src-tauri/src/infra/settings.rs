@@ -78,11 +78,23 @@ static LOG_RETENTION_DAYS_FAIL_OPEN_WARNED: AtomicBool = AtomicBool::new(false);
 
 #[derive(Clone)]
 struct CachedSettings {
+    path: PathBuf,
     data: AppSettings,
     last_updated: Instant,
 }
 
 static SETTINGS_CACHE: OnceLock<RwLock<Option<CachedSettings>>> = OnceLock::new();
+
+fn cache_settings(path: &Path, settings: &AppSettings) {
+    let cache = SETTINGS_CACHE.get_or_init(|| RwLock::new(None));
+    if let Ok(mut guard) = cache.write() {
+        *guard = Some(CachedSettings {
+            path: path.to_path_buf(),
+            data: settings.clone(),
+            last_updated: Instant::now(),
+        });
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, specta::Type)]
 #[serde(rename_all = "snake_case")]
@@ -292,19 +304,21 @@ fn normalize_codex_home_override(raw: &str) -> String {
         return String::new();
     }
 
-    let path = Path::new(trimmed);
-    let Some(file_name) = path.file_name().and_then(|value| value.to_str()) else {
-        return trimmed.to_string();
-    };
-
-    if !file_name.eq_ignore_ascii_case("config.toml") {
-        return trimmed.to_string();
+    if trimmed.eq_ignore_ascii_case("config.toml") {
+        return String::new();
     }
 
-    path.parent()
-        .filter(|parent| !parent.as_os_str().is_empty())
-        .map(|parent| parent.to_string_lossy().to_string())
-        .unwrap_or_else(|| trimmed.to_string())
+    for suffix in ["/config.toml", "\\config.toml"] {
+        if trimmed.len() > suffix.len()
+            && trimmed[trimmed.len() - suffix.len()..].eq_ignore_ascii_case(suffix)
+        {
+            return trimmed[..trimmed.len() - suffix.len()]
+                .trim_end_matches(['/', '\\'])
+                .to_string();
+        }
+    }
+
+    trimmed.to_string()
 }
 
 fn sanitize_codex_home_override(settings: &mut AppSettings) -> bool {
@@ -790,16 +804,15 @@ fn canonical_settings_json(settings: &AppSettings) -> AppResult<serde_json::Valu
 
 pub fn read<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> AppResult<AppSettings> {
     let cache = SETTINGS_CACHE.get_or_init(|| RwLock::new(None));
+    let path = settings_path(app)?;
 
     if let Ok(guard) = cache.read() {
         if let Some(cached) = guard.as_ref() {
-            if cached.last_updated.elapsed() < CACHE_TTL {
+            if cached.path == path && cached.last_updated.elapsed() < CACHE_TTL {
                 return Ok(cached.data.clone());
             }
         }
     }
-
-    let path = settings_path(app)?;
 
     if !path.exists() {
         let legacy_path = legacy_settings_path(app)?;
@@ -861,26 +874,14 @@ pub fn read<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> AppResult<AppSettin
                 // best-effort: persist sanitized defaults
             }
             let _ = write(app, &settings);
-
-            if let Ok(mut guard) = cache.write() {
-                *guard = Some(CachedSettings {
-                    data: settings.clone(),
-                    last_updated: Instant::now(),
-                });
-            }
+            cache_settings(&path, &settings);
             return Ok(settings);
         }
 
         let settings = AppSettings::default();
         // Best-effort: create default settings.json on first read to make the config discoverable/editable.
         let _ = write(app, &settings);
-
-        if let Ok(mut guard) = cache.write() {
-            *guard = Some(CachedSettings {
-                data: settings.clone(),
-                last_updated: Instant::now(),
-            });
-        }
+        cache_settings(&path, &settings);
         return Ok(settings);
     }
 
@@ -935,13 +936,7 @@ pub fn read<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> AppResult<AppSettin
         // Best-effort: persist repaired values while keeping read semantics.
         let _ = write(app, &settings);
     }
-
-    if let Ok(mut guard) = cache.write() {
-        *guard = Some(CachedSettings {
-            data: settings.clone(),
-            last_updated: Instant::now(),
-        });
-    }
+    cache_settings(&path, &settings);
 
     Ok(settings)
 }
@@ -967,11 +962,6 @@ pub fn write<R: tauri::Runtime>(
     settings: &AppSettings,
 ) -> AppResult<AppSettings> {
     let mut settings = settings.clone();
-    settings.codex_home_mode = match settings.codex_home_mode {
-        CodexHomeMode::UserHomeDefault => CodexHomeMode::UserHomeDefault,
-        CodexHomeMode::FollowCodexHome => CodexHomeMode::FollowCodexHome,
-        CodexHomeMode::Custom => CodexHomeMode::Custom,
-    };
     settings.codex_home_override = normalize_codex_home_override(&settings.codex_home_override);
     if settings.codex_home_mode != CodexHomeMode::Custom {
         settings.codex_home_override.clear();
@@ -1125,15 +1115,18 @@ pub fn write<R: tauri::Runtime>(
         let _ = std::fs::remove_file(&backup_path);
     }
 
-    let cache = SETTINGS_CACHE.get_or_init(|| RwLock::new(None));
-    if let Ok(mut guard) = cache.write() {
-        *guard = Some(CachedSettings {
-            data: settings.clone(),
-            last_updated: Instant::now(),
-        });
-    }
+    cache_settings(&path, &settings);
 
     Ok(settings)
+}
+
+/// Clear the in-process settings cache.  Only available for integration tests
+/// where each `TestApp` uses a distinct temp directory.
+pub fn clear_cache() {
+    let cache = SETTINGS_CACHE.get_or_init(|| RwLock::new(None));
+    if let Ok(mut guard) = cache.write() {
+        *guard = None;
+    }
 }
 
 #[cfg(test)]
@@ -1669,6 +1662,7 @@ mod tests {
     #[test]
     fn sanitize_codex_home_override_trims_and_normalizes() {
         let mut s = AppSettings {
+            codex_home_mode: CodexHomeMode::Custom,
             codex_home_override: " ~/.codex/config.toml ".to_string(),
             ..Default::default()
         };

@@ -3,8 +3,10 @@ import { describe, expect, it, vi } from "vitest";
 import { toast } from "sonner";
 import { ProviderEditorDialog } from "../ProviderEditorDialog";
 import { copyText } from "../../../services/clipboard";
+import { logToConsole } from "../../../services/consoleLog";
 import {
   providerGetApiKey,
+  providerDelete,
   providerOAuthDisconnect,
   providerOAuthFetchLimits,
   providerOAuthRefresh,
@@ -26,6 +28,7 @@ vi.mock("../../../services/providers", async () => {
   return {
     ...actual,
     providerUpsert: vi.fn(),
+    providerDelete: vi.fn(),
     baseUrlPingMs: vi.fn(),
     providerGetApiKey: vi.fn(),
     providerOAuthStartFlow: vi.fn(),
@@ -421,6 +424,57 @@ describe("pages/providers/ProviderEditorDialog", () => {
     await waitFor(() => expect(dialog.getByDisplayValue("sk-secret-123")).toBeInTheDocument());
   });
 
+  it("ignores stale API key responses after switching providers", async () => {
+    let resolveFirst!: (value: string) => void;
+    let resolveSecond!: (value: string) => void;
+    vi.mocked(providerGetApiKey)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          })
+      );
+
+    const { rerender } = render(
+      <ProviderEditorDialog
+        mode="edit"
+        open={true}
+        provider={makeProvider({ id: 1, name: "First Provider" })}
+        onSaved={vi.fn()}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    await waitFor(() => expect(vi.mocked(providerGetApiKey)).toHaveBeenCalledWith(1));
+
+    rerender(
+      <ProviderEditorDialog
+        mode="edit"
+        open={true}
+        provider={makeProvider({ id: 2, name: "Second Provider" })}
+        onSaved={vi.fn()}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    await waitFor(() => expect(vi.mocked(providerGetApiKey)).toHaveBeenCalledWith(2));
+
+    resolveSecond("sk-second-provider");
+    await waitFor(() => expect(screen.getByDisplayValue("sk-second-provider")).toBeInTheDocument());
+
+    resolveFirst("sk-first-provider");
+    await waitFor(() =>
+      expect(screen.queryByDisplayValue("sk-first-provider")).not.toBeInTheDocument()
+    );
+    expect(screen.getByDisplayValue("sk-second-provider")).toBeInTheDocument();
+  });
+
   it("shows full API key inside the input when a saved key exists", async () => {
     vi.mocked(providerGetApiKey).mockResolvedValueOnce("1234567890abcdef");
 
@@ -691,6 +745,54 @@ describe("pages/providers/ProviderEditorDialog", () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
 
+  it("keeps auto-saved provider when OAuth succeeds but status sync fails", async () => {
+    vi.mocked(providerUpsert).mockResolvedValueOnce({
+      id: 109,
+      cli_key: "codex",
+      name: "OAuth Provider",
+    } as any);
+    vi.mocked(providerOAuthStartFlow).mockResolvedValueOnce({
+      success: true,
+      provider_type: "google",
+      expires_at: 1700000000,
+    });
+    vi.mocked(providerOAuthStatus).mockRejectedValueOnce(new Error("status sync failed"));
+    vi.mocked(providerOAuthFetchLimits).mockResolvedValueOnce({
+      limit_5h_text: "100 req",
+      limit_weekly_text: "1000 req",
+    });
+
+    const onSaved = vi.fn();
+    const onOpenChange = vi.fn();
+
+    render(
+      <ProviderEditorDialog
+        mode="create"
+        open={true}
+        cliKey="codex"
+        onSaved={onSaved}
+        onOpenChange={onOpenChange}
+      />
+    );
+
+    const dialog = within(screen.getByRole("dialog"));
+    fireEvent.click(dialog.getByText("OAuth 登录"));
+    fireEvent.change(dialog.getByPlaceholderText("default"), {
+      target: { value: "OAuth Provider" },
+    });
+
+    fireEvent.click(dialog.getByRole("button", { name: "OAuth 登录" }));
+
+    await waitFor(() =>
+      expect(vi.mocked(toast)).toHaveBeenCalledWith(
+        "OAuth 登录成功，但读取连接状态失败，可稍后重试"
+      )
+    );
+    await waitFor(() => expect(onSaved).toHaveBeenCalledWith("codex"));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(vi.mocked(providerDelete)).not.toHaveBeenCalled();
+  });
+
   it("does not carry OAuth connection state when create mode starts from duplicate values", async () => {
     render(
       <ProviderEditorDialog
@@ -791,13 +893,15 @@ describe("pages/providers/ProviderEditorDialog", () => {
     vi.mocked(providerOAuthStartFlow).mockResolvedValueOnce({ success: false });
 
     const provider = makeProvider({ auth_mode: "oauth" });
+    const onSaved = vi.fn();
+    const onOpenChange = vi.fn();
     render(
       <ProviderEditorDialog
         mode="edit"
         open={true}
         provider={provider}
-        onSaved={vi.fn()}
-        onOpenChange={vi.fn()}
+        onSaved={onSaved}
+        onOpenChange={onOpenChange}
       />
     );
 
@@ -808,6 +912,145 @@ describe("pages/providers/ProviderEditorDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "OAuth 登录" }));
 
     await waitFor(() => expect(vi.mocked(toast)).toHaveBeenCalledWith("OAuth 登录失败"));
+    expect(vi.mocked(providerDelete)).not.toHaveBeenCalled();
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("rolls back auto-saved provider when OAuth login fails in create mode", async () => {
+    const onSaved = vi.fn();
+    const onOpenChange = vi.fn();
+
+    vi.mocked(providerUpsert).mockResolvedValueOnce({
+      id: 99,
+      cli_key: "codex",
+      name: "OAuth Provider",
+    } as any);
+    vi.mocked(providerOAuthStartFlow).mockResolvedValueOnce({ success: false });
+    vi.mocked(providerDelete).mockResolvedValueOnce(true as any);
+
+    render(
+      <ProviderEditorDialog
+        mode="create"
+        open={true}
+        cliKey="codex"
+        onSaved={onSaved}
+        onOpenChange={onOpenChange}
+      />
+    );
+
+    const dialog = within(screen.getByRole("dialog"));
+    fireEvent.click(dialog.getByText("OAuth 登录"));
+    fireEvent.change(dialog.getByPlaceholderText("default"), {
+      target: { value: "OAuth Provider" },
+    });
+
+    fireEvent.click(dialog.getByRole("button", { name: "OAuth 登录" }));
+
+    await waitFor(() =>
+      expect(vi.mocked(providerOAuthStartFlow)).toHaveBeenCalledWith("codex", 99)
+    );
+    await waitFor(() => expect(vi.mocked(providerDelete)).toHaveBeenCalledWith(99));
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(vi.mocked(toast)).toHaveBeenCalledWith("OAuth 登录失败");
+  });
+
+  it("logs a warning when rollback delete returns false after create OAuth failure", async () => {
+    vi.mocked(logToConsole).mockClear();
+
+    const onSaved = vi.fn();
+    const onOpenChange = vi.fn();
+
+    vi.mocked(providerUpsert).mockResolvedValueOnce({
+      id: 102,
+      cli_key: "codex",
+      name: "OAuth Provider",
+    } as any);
+    vi.mocked(providerOAuthStartFlow).mockResolvedValueOnce({ success: false });
+    vi.mocked(providerDelete).mockResolvedValueOnce(false as any);
+
+    render(
+      <ProviderEditorDialog
+        mode="create"
+        open={true}
+        cliKey="codex"
+        onSaved={onSaved}
+        onOpenChange={onOpenChange}
+      />
+    );
+
+    const dialog = within(screen.getByRole("dialog"));
+    fireEvent.click(dialog.getByText("OAuth 登录"));
+    fireEvent.change(dialog.getByPlaceholderText("default"), {
+      target: { value: "OAuth Provider" },
+    });
+
+    fireEvent.click(dialog.getByRole("button", { name: "OAuth 登录" }));
+
+    await waitFor(() => expect(vi.mocked(providerDelete)).toHaveBeenCalledWith(102));
+    await waitFor(() =>
+      expect(vi.mocked(logToConsole)).toHaveBeenCalledWith(
+        "warn",
+        "OAuth 登录失败后清理临时 Provider 失败：OAuth Provider",
+        expect.objectContaining({
+          cli_key: "codex",
+          provider_id: 102,
+        })
+      )
+    );
+    expect(vi.mocked(toast)).toHaveBeenCalledWith("OAuth 登录失败");
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it("logs an error when rollback delete rejects after create OAuth failure", async () => {
+    vi.mocked(logToConsole).mockClear();
+
+    const onSaved = vi.fn();
+    const onOpenChange = vi.fn();
+
+    vi.mocked(providerUpsert).mockResolvedValueOnce({
+      id: 103,
+      cli_key: "codex",
+      name: "OAuth Provider",
+    } as any);
+    vi.mocked(providerOAuthStartFlow).mockResolvedValueOnce({ success: false });
+    vi.mocked(providerDelete).mockRejectedValueOnce(new Error("delete boom"));
+
+    render(
+      <ProviderEditorDialog
+        mode="create"
+        open={true}
+        cliKey="codex"
+        onSaved={onSaved}
+        onOpenChange={onOpenChange}
+      />
+    );
+
+    const dialog = within(screen.getByRole("dialog"));
+    fireEvent.click(dialog.getByText("OAuth 登录"));
+    fireEvent.change(dialog.getByPlaceholderText("default"), {
+      target: { value: "OAuth Provider" },
+    });
+
+    fireEvent.click(dialog.getByRole("button", { name: "OAuth 登录" }));
+
+    await waitFor(() => expect(vi.mocked(providerDelete)).toHaveBeenCalledWith(103));
+    await waitFor(() =>
+      expect(vi.mocked(logToConsole)).toHaveBeenCalledWith(
+        "error",
+        "OAuth 登录失败后清理临时 Provider 异常：OAuth Provider",
+        expect.objectContaining({
+          cli_key: "codex",
+          provider_id: 103,
+          error: "Error: delete boom",
+        })
+      )
+    );
+    expect(vi.mocked(toast)).toHaveBeenCalledWith("OAuth 登录失败");
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 
   it("handles OAuth refresh in edit mode", async () => {
@@ -969,6 +1212,44 @@ describe("pages/providers/ProviderEditorDialog", () => {
     await waitFor(() =>
       expect(vi.mocked(toast)).toHaveBeenCalledWith(expect.stringContaining("OAuth 登录失败"))
     );
+  });
+
+  it("rolls back auto-saved provider when OAuth login throws in create mode", async () => {
+    const onSaved = vi.fn();
+    const onOpenChange = vi.fn();
+
+    vi.mocked(providerUpsert).mockResolvedValueOnce({
+      id: 101,
+      cli_key: "codex",
+      name: "OAuth Provider",
+    } as any);
+    vi.mocked(providerOAuthStartFlow).mockRejectedValueOnce(new Error("OAuth boom"));
+    vi.mocked(providerDelete).mockResolvedValueOnce(true as any);
+
+    render(
+      <ProviderEditorDialog
+        mode="create"
+        open={true}
+        cliKey="codex"
+        onSaved={onSaved}
+        onOpenChange={onOpenChange}
+      />
+    );
+
+    const dialog = within(screen.getByRole("dialog"));
+    fireEvent.click(dialog.getByText("OAuth 登录"));
+    fireEvent.change(dialog.getByPlaceholderText("default"), {
+      target: { value: "OAuth Provider" },
+    });
+
+    fireEvent.click(dialog.getByRole("button", { name: "OAuth 登录" }));
+
+    await waitFor(() => expect(vi.mocked(providerDelete)).toHaveBeenCalledWith(101));
+    await waitFor(() =>
+      expect(vi.mocked(toast)).toHaveBeenCalledWith(expect.stringContaining("OAuth 登录失败"))
+    );
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 
   it("handles OAuth refresh failure", async () => {
@@ -1267,6 +1548,67 @@ describe("pages/providers/ProviderEditorDialog", () => {
     await waitFor(() => {
       expect(screen.getByText("user@example.com")).toBeInTheDocument();
     });
+  });
+
+  it("ignores stale OAuth status responses after switching providers", async () => {
+    let resolveFirst!: (value: any) => void;
+    let resolveSecond!: (value: any) => void;
+    vi.mocked(providerOAuthStatus)
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          })
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSecond = resolve;
+          })
+      );
+
+    const { rerender } = render(
+      <ProviderEditorDialog
+        mode="edit"
+        open={true}
+        provider={makeProvider({ id: 1, name: "First OAuth", auth_mode: "oauth" })}
+        onSaved={vi.fn()}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    await waitFor(() => expect(vi.mocked(providerOAuthStatus)).toHaveBeenCalledWith(1));
+
+    rerender(
+      <ProviderEditorDialog
+        mode="edit"
+        open={true}
+        provider={makeProvider({ id: 2, name: "Second OAuth", auth_mode: "oauth" })}
+        onSaved={vi.fn()}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    await waitFor(() => expect(vi.mocked(providerOAuthStatus)).toHaveBeenCalledWith(2));
+
+    resolveSecond({
+      connected: true,
+      provider_type: "google",
+      email: "second@example.com",
+      expires_at: 1700000000,
+      has_refresh_token: true,
+    });
+    await waitFor(() => expect(screen.getByText("second@example.com")).toBeInTheDocument());
+
+    resolveFirst({
+      connected: true,
+      provider_type: "google",
+      email: "first@example.com",
+      expires_at: 1700000000,
+      has_refresh_token: true,
+    });
+    await waitFor(() => expect(screen.queryByText("first@example.com")).not.toBeInTheDocument());
+    expect(screen.getByText("second@example.com")).toBeInTheDocument();
   });
 
   it("loads OAuth status error in edit mode", async () => {

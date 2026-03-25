@@ -4,7 +4,6 @@ use crate::codex_paths;
 use crate::shared::fs::{read_optional_file, write_file_atomic_if_changed};
 use serde::{Deserialize, Deserializer, Serialize};
 use std::path::Path;
-use tauri::Manager;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct CodexConfigState {
@@ -39,6 +38,17 @@ pub struct CodexConfigState {
     pub features_fast_mode: Option<bool>,
     pub features_responses_websockets_v2: Option<bool>,
     pub features_multi_agent: Option<bool>,
+}
+
+#[derive(Debug, Clone)]
+struct CodexConfigStateMeta {
+    config_dir: String,
+    config_path: String,
+    user_home_default_dir: String,
+    user_home_default_path: String,
+    follow_codex_home_dir: String,
+    follow_codex_home_path: String,
+    can_open_config_dir: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -873,24 +883,18 @@ fn normalize_toml_layout(lines: &mut Vec<String>) {
 }
 
 fn make_state_from_bytes(
-    config_dir: String,
-    config_path: String,
-    user_home_default_dir: String,
-    user_home_default_path: String,
-    follow_codex_home_dir: String,
-    follow_codex_home_path: String,
-    can_open_config_dir: bool,
+    meta: CodexConfigStateMeta,
     bytes: Option<Vec<u8>>,
 ) -> crate::shared::error::AppResult<CodexConfigState> {
     let exists = bytes.is_some();
     let mut state = CodexConfigState {
-        config_dir,
-        config_path,
-        user_home_default_dir,
-        user_home_default_path,
-        follow_codex_home_dir,
-        follow_codex_home_path,
-        can_open_config_dir,
+        config_dir: meta.config_dir,
+        config_path: meta.config_path,
+        user_home_default_dir: meta.user_home_default_dir,
+        user_home_default_path: meta.user_home_default_path,
+        follow_codex_home_dir: meta.follow_codex_home_dir,
+        follow_codex_home_path: meta.follow_codex_home_path,
+        can_open_config_dir: meta.can_open_config_dir,
         exists,
 
         model: None,
@@ -1041,9 +1045,7 @@ pub fn codex_config_get<R: tauri::Runtime>(
     let follow_dir = follow_path.parent().unwrap_or(Path::new("")).to_path_buf();
     let bytes = read_optional_file(&path)?;
 
-    let can_open_config_dir = app
-        .path()
-        .home_dir()
+    let can_open_config_dir = crate::shared::user_home::home_dir(app)
         .ok()
         .map(|home| {
             let allowed_root = home.join(".codex");
@@ -1055,13 +1057,15 @@ pub fn codex_config_get<R: tauri::Runtime>(
         .unwrap_or(false);
 
     make_state_from_bytes(
-        dir.to_string_lossy().to_string(),
-        path.to_string_lossy().to_string(),
-        user_default_dir.to_string_lossy().to_string(),
-        user_default_path.to_string_lossy().to_string(),
-        follow_dir.to_string_lossy().to_string(),
-        follow_path.to_string_lossy().to_string(),
-        can_open_config_dir,
+        CodexConfigStateMeta {
+            config_dir: dir.to_string_lossy().to_string(),
+            config_path: path.to_string_lossy().to_string(),
+            user_home_default_dir: user_default_dir.to_string_lossy().to_string(),
+            user_home_default_path: user_default_path.to_string_lossy().to_string(),
+            follow_codex_home_dir: follow_dir.to_string_lossy().to_string(),
+            follow_codex_home_path: follow_path.to_string_lossy().to_string(),
+            can_open_config_dir,
+        },
         bytes,
     )
 }

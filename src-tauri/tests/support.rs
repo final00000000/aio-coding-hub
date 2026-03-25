@@ -6,10 +6,10 @@ use tempfile::TempDir;
 static ENV_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 
 fn env_lock() -> MutexGuard<'static, ()> {
-    ENV_LOCK
-        .get_or_init(|| Mutex::new(()))
+    let mutex = ENV_LOCK.get_or_init(|| Mutex::new(()));
+    mutex
         .lock()
-        .expect("lock test env")
+        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 #[derive(Default)]
@@ -64,6 +64,7 @@ impl TestApp {
         let home_os = home.path().as_os_str().to_os_string();
 
         env.set_var("HOME", home_os.clone());
+        env.set_var("AIO_CODING_HUB_HOME_DIR", home_os.clone());
         // Windows fallback env for `dirs`/tauri path resolution.
         env.set_var("USERPROFILE", home_os);
 
@@ -72,6 +73,9 @@ impl TestApp {
 
         // Default to ~/.codex for deterministic codex_paths behavior.
         env.remove_var("CODEX_HOME");
+
+        // Flush the global settings cache so a fresh read hits the new temp dir.
+        aio_coding_hub_lib::test_support::clear_settings_cache();
 
         let app = tauri::test::mock_app();
 

@@ -2,6 +2,10 @@
 
 use std::path::PathBuf;
 
+pub fn clear_settings_cache() {
+    crate::settings::clear_cache();
+}
+
 fn serialize_json(
     value: impl serde::Serialize,
 ) -> crate::shared::error::AppResult<serde_json::Value> {
@@ -77,6 +81,19 @@ pub fn init_db<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
 ) -> crate::shared::error::AppResult<()> {
     crate::infra::db::init(app).map(|_| ())
+}
+
+pub fn app_data_reset<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+) -> crate::shared::error::AppResult<bool> {
+    let state = crate::app::app_state::DbInitState::default();
+    let app_handle = app.clone();
+
+    tauri::async_runtime::block_on(async move {
+        let _ = crate::app::app_state::ensure_db_ready(app_handle.clone(), &state).await?;
+        let _db_reset_guard = crate::app::app_state::prepare_db_reset(&state).await;
+        crate::infra::data_management::app_data_reset(&app_handle)
+    })
 }
 
 pub fn mcp_read_target_bytes<R: tauri::Runtime>(
@@ -370,42 +387,27 @@ pub fn cli_manager_claude_env_set_json<R: tauri::Runtime>(
 
 /// Read application settings and return as JSON Value.
 ///
-/// Because `settings::read` is not generic over `R: tauri::Runtime`, this bridge
-/// reads the settings JSON file directly using the generic `app_data_dir` helper.
+/// Use the real settings entrypoint so migrations, sanitization, and the in-memory
+/// cache behave the same way as production code.
 pub fn settings_get_json<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
 ) -> crate::shared::error::AppResult<serde_json::Value> {
-    let settings_path = crate::infra::app_paths::app_data_dir(app)?.join("settings.json");
-    let settings: crate::settings::AppSettings = if settings_path.exists() {
-        let content = std::fs::read_to_string(&settings_path)
-            .map_err(|e| format!("failed to read settings: {e}"))?;
-        serde_json::from_str(&content).map_err(|e| format!("failed to parse settings: {e}"))?
-    } else {
-        let defaults = crate::settings::AppSettings::default();
-        let content = serde_json::to_vec_pretty(&defaults)
-            .map_err(|e| format!("failed to serialize default settings: {e}"))?;
-        std::fs::write(&settings_path, &content)
-            .map_err(|e| format!("failed to write default settings: {e}"))?;
-        defaults
-    };
+    let settings = crate::settings::read(app)?;
     serialize_json(settings)
 }
 
 /// Update application settings from a JSON Value and return the persisted result.
 ///
-/// The `update` Value is deserialized as a full `AppSettings` struct and written to disk.
+/// Use the real write helper so tests observe the same sanitization and cache updates
+/// as production code.
 pub fn settings_set_json<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     update: serde_json::Value,
 ) -> crate::shared::error::AppResult<serde_json::Value> {
     let settings: crate::settings::AppSettings = serde_json::from_value(update)
         .map_err(|e| format!("SEC_INVALID_INPUT: invalid settings json: {e}"))?;
-    let settings_path = crate::infra::app_paths::app_data_dir(app)?.join("settings.json");
-    let content = serde_json::to_vec_pretty(&settings)
-        .map_err(|e| format!("failed to serialize settings: {e}"))?;
-    std::fs::write(&settings_path, content)
-        .map_err(|e| format!("failed to write settings: {e}"))?;
-    serialize_json(settings)
+    let persisted = crate::settings::write(app, &settings)?;
+    serialize_json(persisted)
 }
 
 // ---------------------------------------------------------------------------
@@ -491,6 +493,35 @@ pub fn skill_return_to_local<R: tauri::Runtime>(
     let db = crate::infra::db::init(app)?;
     crate::skills::return_to_local(app, &db, workspace_id, skill_id)?;
     Ok(true)
+}
+
+pub fn skill_local_delete<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    workspace_id: i64,
+    dir_name: &str,
+) -> crate::shared::error::AppResult<bool> {
+    let db = crate::infra::db::init(app)?;
+    crate::skills::delete_local(app, &db, workspace_id, dir_name)?;
+    Ok(true)
+}
+
+pub fn skills_local_list_json<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    workspace_id: i64,
+) -> crate::shared::error::AppResult<serde_json::Value> {
+    let db = crate::infra::db::init(app)?;
+    let rows = crate::skills::local_list(app, &db, workspace_id)?;
+    serialize_json(rows)
+}
+
+pub fn skill_import_local_json<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    workspace_id: i64,
+    dir_name: &str,
+) -> crate::shared::error::AppResult<serde_json::Value> {
+    let db = crate::infra::db::init(app)?;
+    let row = crate::skills::import_local(app, &db, workspace_id, dir_name)?;
+    serialize_json(row)
 }
 
 // ---------------------------------------------------------------------------

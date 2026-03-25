@@ -7,9 +7,9 @@
  * 参考：https://github.com/ZekerTop/ai-cli-complete-notify
  */
 
-import { listen } from "@tauri-apps/api/event";
 import { useSyncExternalStore } from "react";
 import { logToConsole } from "./consoleLog";
+import { gatewayEventNames, subscribeGatewayEvent } from "./gatewayEventBus";
 import { noticeSend } from "./notice";
 import type { GatewayRequestEvent, GatewayRequestStartEvent } from "./gatewayEvents";
 
@@ -248,22 +248,32 @@ async function maybeNotify(cliKey: string) {
 // ---------------------------------------------------------------------------
 
 export async function listenTaskCompleteNotifyEvents(): Promise<() => void> {
-  const unlistenRequestStart = await listen<GatewayRequestStartEvent>(
-    "gateway:request_start",
-    (event) => {
-      if (!event.payload) return;
-      handleRequestStart(event.payload);
+  const requestStartSub = subscribeGatewayEvent<GatewayRequestStartEvent>(
+    gatewayEventNames.requestStart,
+    (payload) => {
+      if (!payload) return;
+      handleRequestStart(payload);
     }
   );
-
-  const unlistenRequest = await listen<GatewayRequestEvent>("gateway:request", (event) => {
-    if (!event.payload) return;
-    handleRequestComplete(event.payload);
-  });
+  const requestSub = subscribeGatewayEvent<GatewayRequestEvent>(
+    gatewayEventNames.request,
+    (payload) => {
+      if (!payload) return;
+      handleRequestComplete(payload);
+    }
+  );
+  const readyResults = await Promise.allSettled([requestStartSub.ready, requestSub.ready]);
+  const subscribeFailed = readyResults.some((result) => result.status === "rejected");
+  if (subscribeFailed) {
+    requestStartSub.unsubscribe();
+    requestSub.unsubscribe();
+    const failedResult = readyResults.find((result) => result.status === "rejected");
+    throw failedResult?.reason ?? new Error("task complete notify subscriptions failed");
+  }
 
   return () => {
-    unlistenRequestStart();
-    unlistenRequest();
+    requestStartSub.unsubscribe();
+    requestSub.unsubscribe();
     resetSessions();
   };
 }

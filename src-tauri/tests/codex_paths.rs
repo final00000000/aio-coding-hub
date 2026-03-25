@@ -5,6 +5,9 @@ fn codex_paths_use_user_home_default_by_default() {
     let app = support::TestApp::new();
     let handle = app.handle();
 
+    // Ensure no leftover CODEX_HOME from other tests
+    std::env::remove_var("CODEX_HOME");
+
     let path =
         aio_coding_hub_lib::test_support::codex_config_toml_path(&handle).expect("default path");
     assert_eq!(
@@ -39,6 +42,59 @@ fn codex_paths_follow_codex_home_env_when_mode_is_follow_codex_home() {
     let path =
         aio_coding_hub_lib::test_support::codex_config_toml_path(&handle).expect("absolute path");
     assert_eq!(path, abs_dir.join("config.toml"));
+
+    // Clean up env var to avoid polluting other tests
+    std::env::remove_var("CODEX_HOME");
+}
+
+#[test]
+fn codex_paths_prefers_settings_override_and_normalizes_config_toml_input() {
+    let app = support::TestApp::new();
+    let handle = app.handle();
+
+    // Clean env to avoid interference from other tests
+    std::env::remove_var("CODEX_HOME");
+
+    let mut settings =
+        aio_coding_hub_lib::test_support::settings_get_json(&handle).expect("read defaults");
+    settings["codex_home_mode"] = serde_json::json!("custom");
+    settings["codex_home_override"] =
+        serde_json::json!(app.home_dir().join("custom-codex").join("config.toml"));
+    let _ = aio_coding_hub_lib::test_support::settings_set_json(&handle, settings).expect("write");
+
+    let path = aio_coding_hub_lib::test_support::codex_config_toml_path(&handle)
+        .expect("settings override path");
+    assert_eq!(
+        path,
+        app.home_dir().join("custom-codex").join("config.toml")
+    );
+}
+
+#[test]
+fn codex_follow_env_or_default_ignores_settings_override() {
+    let app = support::TestApp::new();
+    let handle = app.handle();
+
+    // Clean env first
+    std::env::remove_var("CODEX_HOME");
+
+    let mut settings =
+        aio_coding_hub_lib::test_support::settings_get_json(&handle).expect("read defaults");
+    settings["codex_home_mode"] = serde_json::json!("custom");
+    settings["codex_home_override"] = serde_json::json!(app.home_dir().join("custom-codex"));
+    let _ = aio_coding_hub_lib::test_support::settings_set_json(&handle, settings).expect("write");
+
+    let path = aio_coding_hub_lib::test_support::codex_home_dir_follow_env_or_default(&handle)
+        .expect("follow default path");
+    assert_eq!(path, app.home_dir().join(".codex"));
+
+    std::env::set_var("CODEX_HOME", "env-codex-home");
+    let path = aio_coding_hub_lib::test_support::codex_home_dir_follow_env_or_default(&handle)
+        .expect("follow env path");
+    assert_eq!(path, app.home_dir().join("env-codex-home"));
+
+    // Clean up
+    std::env::remove_var("CODEX_HOME");
 }
 
 #[test]
