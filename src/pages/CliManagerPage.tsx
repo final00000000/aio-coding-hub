@@ -415,17 +415,18 @@ export function CliManagerPage() {
         });
         return null;
       });
-    if (codexProxyEnabled === false) {
-      return;
-    }
 
     try {
+      if (codexProxyEnabled === false) {
+        return false;
+      }
+
       const codexResult = await cliProxyRebindCodexHome();
 
       if (!codexResult) {
         logToConsole("warn", "Codex Home 已切换，但 Codex 代理重绑未返回结果", {});
         toast("Codex 目录已切换，但代理重绑未返回结果；可稍后在首页点击“修复”重试");
-        return;
+        return false;
       }
 
       if (!codexResult.ok) {
@@ -434,7 +435,7 @@ export function CliManagerPage() {
           message: codexResult.message,
         });
         toast("Codex 目录已切换，但代理重绑失败；可稍后在首页点击“修复”重试");
-        return;
+        return false;
       }
 
       logToConsole("info", "Codex Home 已切换，已触发 Codex 代理重绑", {
@@ -442,11 +443,13 @@ export function CliManagerPage() {
         trace_id: codexResult.trace_id,
         message: codexResult.message,
       });
+      return true;
     } catch (err) {
       logToConsole("warn", "Codex Home 已切换，但 Codex 代理重绑失败", {
         error: String(err),
       });
       toast("Codex 目录已切换，但代理重绑失败；可稍后在首页点击“修复”重试");
+      return false;
     } finally {
       void queryClient.invalidateQueries({ queryKey: cliProxyKeys.statusAll() });
     }
@@ -465,7 +468,10 @@ export function CliManagerPage() {
     }
 
     await refreshCodex();
-    await repairCodexProxyAfterCodexHomeChange();
+    const rebound = await repairCodexProxyAfterCodexHomeChange();
+    if (rebound) {
+      await refreshCodex();
+    }
     return true;
   }
 

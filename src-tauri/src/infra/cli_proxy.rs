@@ -438,6 +438,47 @@ fn restore_file_snapshots(snapshots: &[FileSnapshot]) -> crate::shared::error::A
     Ok(())
 }
 
+fn restore_backups_exactly_from_manifest<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    manifest: &CliProxyManifest,
+) -> crate::shared::error::AppResult<()> {
+    let cli_key = manifest.cli_key.as_str();
+    validate_cli_key(cli_key)?;
+
+    let root = cli_proxy_root_dir(app, cli_key)?;
+    let files_dir = cli_proxy_files_dir(&root);
+
+    for entry in &manifest.files {
+        let target_path = PathBuf::from(&entry.path);
+        if entry.existed {
+            let Some(rel) = entry.backup_rel.as_ref() else {
+                return Err(format!("missing backup_rel for {}", entry.kind).into());
+            };
+            let backup_path = files_dir.join(rel);
+            let bytes = std::fs::read(&backup_path).map_err(|e| {
+                format!(
+                    "failed to read backup {} for {}: {e}",
+                    backup_path.display(),
+                    entry.kind
+                )
+            })?;
+            if let Some(parent) = target_path.parent() {
+                std::fs::create_dir_all(parent)
+                    .map_err(|e| format!("failed to create {}: {e}", parent.display()))?;
+            }
+            write_file_atomic(&target_path, &bytes)?;
+            continue;
+        }
+
+        if target_path.exists() {
+            std::fs::remove_file(&target_path)
+                .map_err(|e| format!("failed to remove {}: {e}", target_path.display()))?;
+        }
+    }
+
+    Ok(())
+}
+
 fn snapshot_backup_files<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     cli_key: &str,
@@ -494,6 +535,81 @@ fn build_manifest_from_captured(
     }
 }
 
+fn build_manifest_with_current_target_paths<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    existing: &CliProxyManifest,
+    base_origin: &str,
+) -> crate::shared::error::AppResult<CliProxyManifest> {
+    let now = now_unix_seconds();
+    let files = target_files(app, existing.cli_key.as_str())?
+        .into_iter()
+        .map(|target| {
+            let existing_entry = existing
+                .files
+                .iter()
+                .find(|entry| entry.kind == target.kind)
+                .ok_or_else(|| format!("missing manifest entry for {}", target.kind))?;
+
+            Ok(BackupFileEntry {
+                kind: existing_entry.kind.clone(),
+                path: target.path.to_string_lossy().to_string(),
+                existed: existing_entry.existed,
+                backup_rel: existing_entry.backup_rel.clone(),
+            })
+        })
+        .collect::<crate::shared::error::AppResult<Vec<_>>>()?;
+
+    Ok(CliProxyManifest {
+        schema_version: MANIFEST_SCHEMA_VERSION,
+        managed_by: MANAGED_BY.to_string(),
+        cli_key: existing.cli_key.clone(),
+        enabled: existing.enabled,
+        base_origin: Some(base_origin.to_string()),
+        created_at: existing.created_at,
+        updated_at: now,
+        files,
+    })
+}
+
+fn is_codex_proxy_target_state<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> bool {
+    let config_path = match codex_config_path(app) {
+        Ok(path) => path,
+        Err(_) => return false,
+    };
+    let auth_path = match codex_auth_path(app) {
+        Ok(path) => path,
+        Err(_) => return false,
+    };
+
+    let config = match std::fs::read_to_string(&config_path) {
+        Ok(content) => content,
+        Err(_) => return false,
+    };
+    let auth_bytes = match std::fs::read(&auth_path) {
+        Ok(bytes) => bytes,
+        Err(_) => return false,
+    };
+    let auth = match serde_json::from_slice::<serde_json::Value>(&auth_bytes) {
+        Ok(value) => value,
+        Err(_) => return false,
+    };
+
+    let expected_provider = format!("model_provider = \"{CODEX_PROVIDER_KEY}\"");
+    let expected_table_unquoted = format!("[model_providers.{CODEX_PROVIDER_KEY}]");
+    let expected_table_double = format!("[model_providers.\"{CODEX_PROVIDER_KEY}\"]");
+    let expected_table_single = format!("[model_providers.'{CODEX_PROVIDER_KEY}']");
+
+    let has_proxy_provider = config.contains(&expected_provider)
+        && (config.contains(&expected_table_unquoted)
+            || config.contains(&expected_table_double)
+            || config.contains(&expected_table_single));
+    let has_proxy_auth = auth.get("OPENAI_API_KEY").and_then(|value| value.as_str())
+        == Some(PLACEHOLDER_KEY)
+        && auth.get("auth_mode").and_then(|value| value.as_str()) == Some("apikey");
+
+    has_proxy_provider && has_proxy_auth
+}
+
 fn rebind_codex_manifest_after_home_change<R: tauri::Runtime>(
     app: &tauri::AppHandle<R>,
     mut manifest: CliProxyManifest,
@@ -502,19 +618,75 @@ fn rebind_codex_manifest_after_home_change<R: tauri::Runtime>(
     trace_id: String,
 ) -> crate::shared::error::AppResult<CliProxyResult> {
     let captured = capture_current_target_state(app, "codex")?;
-    if is_proxy_config_applied(app, "codex", base_origin) {
+    let previous_manifest = manifest.clone();
+    let target_already_proxy_managed = is_proxy_config_applied(app, "codex", base_origin)
+        || previous_manifest
+            .base_origin
+            .as_deref()
+            .is_some_and(|origin| is_proxy_config_applied(app, "codex", origin))
+        || is_codex_proxy_target_state(app);
+
+    if target_already_proxy_managed {
+        let target_snapshots = snapshot_target_files(&captured)?;
+        manifest = build_manifest_with_current_target_paths(app, &manifest, base_origin)?;
+
+        if let Err(err) = write_manifest(app, "codex", &manifest) {
+            return Ok(CliProxyResult {
+                trace_id,
+                cli_key: "codex".to_string(),
+                enabled: true,
+                ok: false,
+                error_code: Some("CLI_PROXY_REBIND_MANIFEST_WRITE_FAILED".to_string()),
+                message: err.to_string(),
+                base_origin: Some(base_origin.to_string()),
+            });
+        }
+
+        if let Err(err) = restore_backups_exactly_from_manifest(app, &manifest) {
+            let _ = write_manifest(app, "codex", &previous_manifest);
+            let _ = restore_file_snapshots(&target_snapshots);
+            return Ok(CliProxyResult {
+                trace_id,
+                cli_key: "codex".to_string(),
+                enabled: true,
+                ok: false,
+                error_code: Some("CLI_PROXY_REBIND_RESTORE_FAILED".to_string()),
+                message: err.to_string(),
+                base_origin: Some(base_origin.to_string()),
+            });
+        }
+
+        if apply_live {
+            if let Err(err) = apply_proxy_config(app, "codex", base_origin) {
+                let _ = write_manifest(app, "codex", &previous_manifest);
+                let _ = restore_file_snapshots(&target_snapshots);
+                return Ok(CliProxyResult {
+                    trace_id,
+                    cli_key: "codex".to_string(),
+                    enabled: true,
+                    ok: false,
+                    error_code: Some("CLI_PROXY_REBIND_APPLY_FAILED".to_string()),
+                    message: err.to_string(),
+                    base_origin: Some(base_origin.to_string()),
+                });
+            }
+        }
+
         return Ok(CliProxyResult {
             trace_id,
             cli_key: "codex".to_string(),
             enabled: true,
-            ok: false,
-            error_code: Some("CLI_PROXY_REBIND_INVALID_BASELINE".to_string()),
-            message: "Codex 新目录当前已是代理态，无法自动重绑直连基线".to_string(),
+            ok: true,
+            error_code: None,
+            message: if apply_live {
+                "已重绑 Codex 目录并写入当前网关配置".to_string()
+            } else {
+                "已重绑 Codex 目录基线，待网关启动后接管".to_string()
+            },
             base_origin: Some(base_origin.to_string()),
         });
     }
 
-    let previous_manifest = manifest.clone();
     let backup_snapshots = snapshot_backup_files(app, "codex", &captured)?;
     let target_snapshots = snapshot_target_files(&captured)?;
 
@@ -1531,16 +1703,9 @@ pub fn status_all<R: tauri::Runtime>(
         let manifest = read_manifest(app, cli_key)?;
         let enabled = manifest.as_ref().map(|m| m.enabled).unwrap_or(false);
         let manifest_base_origin = manifest.as_ref().and_then(|m| m.base_origin.clone());
-        let comparison_base_origin = current_base_origin
-            .map(str::to_string)
-            .or_else(|| manifest_base_origin.clone());
         let applied_to_current_gateway = if enabled {
-            Some(
-                comparison_base_origin
-                    .as_deref()
-                    .map(|base_origin| is_proxy_config_applied(app, cli_key, base_origin))
-                    .unwrap_or(false),
-            )
+            current_base_origin
+                .map(|base_origin| is_proxy_config_applied(app, cli_key, base_origin))
         } else {
             None
         };

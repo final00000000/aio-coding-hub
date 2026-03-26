@@ -15,7 +15,6 @@ default-run = "aio-coding-hub"
 name = "aio_coding_hub_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 doctest = false
-test = false
 
 [[bin]]
 name = "export-bindings"

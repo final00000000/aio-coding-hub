@@ -19,7 +19,12 @@ function sanitizeWindowsPath(rawPath) {
 }
 
 function run() {
-  const child = spawn("cargo", ["run", "--locked", "--bin", "export-bindings"], {
+  const userArgs = process.argv.slice(2);
+  if (userArgs[0] === "--") {
+    userArgs.shift();
+  }
+
+  const child = spawn("cargo", ["run", "--locked", "--bin", "export-bindings", ...userArgs], {
     cwd: tauriRoot,
     stdio: "inherit",
     shell: false,

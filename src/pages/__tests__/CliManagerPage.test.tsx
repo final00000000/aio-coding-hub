@@ -925,9 +925,9 @@ describe("pages/CliManagerPage", () => {
     );
     await waitFor(() => expect(cliProxyStatusAll).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(cliProxyRebindCodexHome).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(codexConfigRefetch).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(codexTomlRefetch).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(codexInfoRefetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(codexConfigRefetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(codexTomlRefetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(codexInfoRefetch).toHaveBeenCalledTimes(2));
     await waitFor(() =>
       expect(client.getQueryState(cliProxyKeys.statusAll())?.isInvalidated).toBe(true)
     );
@@ -1073,7 +1073,9 @@ describe("pages/CliManagerPage", () => {
     await waitFor(() => expect(codexConfigRefetch).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(codexTomlRefetch).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(codexInfoRefetch).toHaveBeenCalledTimes(1));
-    expect(client.getQueryState(cliProxyKeys.statusAll())?.isInvalidated).not.toBe(true);
+    await waitFor(() =>
+      expect(client.getQueryState(cliProxyKeys.statusAll())?.isInvalidated).toBe(true)
+    );
   });
 
   it("still attempts codex proxy rebind when cli proxy status read fails after saving codex_home", async () => {
@@ -1196,9 +1198,9 @@ describe("pages/CliManagerPage", () => {
         expect.objectContaining({ error: expect.stringContaining("status failed") })
       )
     );
-    await waitFor(() => expect(codexConfigRefetch).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(codexTomlRefetch).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(codexInfoRefetch).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(codexConfigRefetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(codexTomlRefetch).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(codexInfoRefetch).toHaveBeenCalledTimes(2));
     await waitFor(() =>
       expect(client.getQueryState(cliProxyKeys.statusAll())?.isInvalidated).toBe(true)
     );
