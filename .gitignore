@@ -40,6 +40,4 @@ coverage/
 .serena/
 src/templates/
 .codex/
-
-# Rust build artifacts
-src-tauri/target*
+src-tauri/target*/
