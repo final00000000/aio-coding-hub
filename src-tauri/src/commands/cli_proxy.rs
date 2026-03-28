@@ -158,7 +158,7 @@ pub(crate) async fn cli_proxy_set_disabled_impl<R: tauri::Runtime>(
         if r.ok {
             let db_result = match db_state {
                 Some(db_state) => ensure_db_ready(app.clone(), db_state).await,
-                None => crate::infra::db::init(&app).map_err(Into::into),
+                None => crate::infra::db::init(&app),
             };
             match db_result {
                 Ok(db) => {
