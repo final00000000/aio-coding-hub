@@ -10,7 +10,7 @@ use crate::shared::mutex_ext::MutexExt;
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::OnceLock;
 use std::time::Duration;
-use tauri::{Emitter, Manager};
+use tauri::Manager;
 use tokio::sync::Notify;
 
 const CLEANUP_STATE_IDLE: u8 = 0;
@@ -176,7 +176,7 @@ pub(crate) async fn stop_gateway_best_effort(app: &tauri::AppHandle) {
         base_url: None,
         listen_addr: None,
     };
-    let _ = app.emit(GATEWAY_STATUS_EVENT_NAME, &stopped_status);
+    crate::app::heartbeat_watchdog::gated_emit(app, GATEWAY_STATUS_EVENT_NAME, stopped_status);
 
     let stop_timeout = Duration::from_secs(3);
     let join_all = async {

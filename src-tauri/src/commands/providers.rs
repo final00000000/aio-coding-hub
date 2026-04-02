@@ -6,7 +6,6 @@ use crate::shared::mutex_ext::MutexExt;
 use crate::{base_url_probe, blocking, providers};
 use serde_json::json;
 use std::path::{Path, PathBuf};
-use tauri::Emitter;
 use tauri::Manager;
 
 const ENV_CLAUDE_DISABLE_NONESSENTIAL_TRAFFIC: &str = "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC";
@@ -357,7 +356,7 @@ fn ensure_gateway_base_origin(
 
     drop(manager);
 
-    let _ = app.emit(GATEWAY_STATUS_EVENT_NAME, status.clone());
+    crate::app::heartbeat_watchdog::gated_emit(app, GATEWAY_STATUS_EVENT_NAME, status.clone());
 
     status
         .base_url

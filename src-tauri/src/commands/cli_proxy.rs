@@ -4,7 +4,6 @@ use crate::app_state::{ensure_db_ready, DbInitState, GatewayState};
 use crate::gateway::events::GATEWAY_STATUS_EVENT_NAME;
 use crate::shared::mutex_ext::MutexExt;
 use crate::{blocking, cli_proxy, mcp, settings};
-use tauri::Emitter;
 use tauri::Manager;
 
 #[tauri::command]
@@ -70,7 +69,11 @@ pub(crate) async fn cli_proxy_set_enabled_impl(
                 } else {
                     let settings = settings::read(&app)?;
                     let status = manager.start(&app, db, Some(settings.preferred_port))?;
-                    let _ = app.emit(GATEWAY_STATUS_EVENT_NAME, status.clone());
+                    crate::app::heartbeat_watchdog::gated_emit(
+                        &app,
+                        GATEWAY_STATUS_EVENT_NAME,
+                        status.clone(),
+                    );
                     status
                 };
 

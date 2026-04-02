@@ -5,7 +5,6 @@ use crate::{
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::Emitter;
 use tokio::sync::oneshot;
 
 use super::codex_session_id::CodexSessionIdCache;
@@ -202,7 +201,7 @@ impl GatewayManager {
                 bound_port: port,
                 base_url: base_url.clone(),
             };
-            let _ = app.emit(GATEWAY_LOG_EVENT_NAME, payload);
+            crate::app::heartbeat_watchdog::gated_emit(app, GATEWAY_LOG_EVENT_NAME, payload);
         }
 
         let client = reqwest::Client::builder()
@@ -297,7 +296,7 @@ impl GatewayManager {
         });
 
         let status = self.status();
-        let _ = state_app.emit(GATEWAY_STATUS_EVENT_NAME, &status);
+        crate::app::heartbeat_watchdog::gated_emit(&state_app, GATEWAY_STATUS_EVENT_NAME, &status);
         Ok(status)
     }
 

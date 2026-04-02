@@ -25,7 +25,6 @@ use app_state::{ensure_db_ready, DbInitState, GatewayState};
 use commands::*;
 use shared::mutex_ext::MutexExt;
 use std::sync::atomic::{AtomicBool, Ordering};
-use tauri::Emitter;
 use tauri::Manager;
 
 static EXIT_CLEANUP_SPAWNED: AtomicBool = AtomicBool::new(false);
@@ -226,7 +225,7 @@ pub fn run() {
                     }
                 };
 
-                let _ = app_handle.emit(crate::gateway::events::GATEWAY_STATUS_EVENT_NAME, status.clone());
+                crate::app::heartbeat_watchdog::gated_emit(&app_handle, crate::gateway::events::GATEWAY_STATUS_EVENT_NAME, status.clone());
 
                 // WSL auto-detect and auto-configure (Windows only, gated by wsl_auto_config)
                 #[cfg(windows)]

@@ -5,7 +5,6 @@ use crate::commands::limit::normalize_limit;
 use crate::gateway::events::GATEWAY_STATUS_EVENT_NAME;
 use crate::shared::mutex_ext::MutexExt;
 use crate::{blocking, cli_proxy, gateway, providers, request_logs, settings, wsl};
-use tauri::Emitter;
 use tauri::Manager;
 
 const GATEWAY_SESSIONS_DEFAULT_LIMIT: u32 = 50;
@@ -227,7 +226,7 @@ pub(crate) async fn gateway_start(
     })
     .await?;
 
-    let _ = app.emit(GATEWAY_STATUS_EVENT_NAME, status.clone());
+    crate::app::heartbeat_watchdog::gated_emit(&app, GATEWAY_STATUS_EVENT_NAME, status.clone());
     if let Some(base_origin) = status.base_url.as_deref() {
         // Best-effort: if any CLI proxy is enabled, keep its config aligned with the actual gateway port.
         let app_for_sync = app.clone();
@@ -261,7 +260,7 @@ pub(crate) async fn gateway_stop(
     crate::app::cleanup::stop_gateway_best_effort(&app).await;
 
     let status = gateway_status(state);
-    let _ = app.emit(GATEWAY_STATUS_EVENT_NAME, status.clone());
+    crate::app::heartbeat_watchdog::gated_emit(&app, GATEWAY_STATUS_EVENT_NAME, status.clone());
 
     // Best-effort: if any CLI proxy is enabled, restore its live config when the gateway is stopped,
     // so CLI tools won't keep pointing at a dead localhost gateway. Keep `enabled` state for auto re-takeover.

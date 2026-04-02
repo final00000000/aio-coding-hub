@@ -4,7 +4,7 @@
 //! - 前端：`invoke("notice_send", { level, title?, body })` 触发通知
 //! - Rust 后台：调用 `notice::emit(app, payload)` 触发通知事件（由前端统一监听并发送系统通知）
 
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 pub const NOTICE_EVENT_NAME: &str = "notice:notify";
 
@@ -61,6 +61,13 @@ pub fn emit(
     app: &tauri::AppHandle,
     payload: NoticeEventPayload,
 ) -> crate::shared::error::AppResult<()> {
+    let alive = app
+        .try_state::<crate::app::heartbeat_watchdog::HeartbeatWatchdogState>()
+        .map(|s| s.is_webview_alive())
+        .unwrap_or(true);
+    if !alive {
+        return Ok(());
+    }
     app.emit(NOTICE_EVENT_NAME, payload)
         .map_err(|e| format!("NOTICE_EMIT: {e}"))?;
     Ok(())

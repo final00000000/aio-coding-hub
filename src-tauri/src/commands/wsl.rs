@@ -5,8 +5,6 @@ use crate::app_state::{ensure_db_ready, DbInitState, GatewayState};
 use crate::db;
 use crate::shared::mutex_ext::MutexExt;
 use crate::{blocking, gateway, settings, wsl};
-#[cfg(windows)]
-use tauri::Emitter;
 use tauri::Manager;
 
 async fn detect_wsl_blocking(label: &'static str) -> Result<wsl::WslDetection, String> {
@@ -290,7 +288,7 @@ pub(crate) async fn wsl_auto_sync_core(app: &tauri::AppHandle) -> Result<(), Str
         "WSL auto-sync core completed"
     );
 
-    let _ = app.emit("wsl:auto_config_result", &report);
+    crate::app::heartbeat_watchdog::gated_emit(&app, "wsl:auto_config_result", &report);
 
     Ok(())
 }
@@ -370,7 +368,7 @@ pub(crate) async fn wsl_auto_configure_on_startup(
         tracing::info!(
             "WSL startup auto-configure: listen mode is localhost, prompting user to switch"
         );
-        let _ = app.emit("wsl:localhost_switch_prompt", ());
+        crate::app::heartbeat_watchdog::gated_emit(&app, "wsl:localhost_switch_prompt", ());
         return Ok(());
     }
 
@@ -394,7 +392,7 @@ async fn do_wsl_auto_configure(
                 message: "gateway port unknown".to_string(),
                 distros: Vec::new(),
             };
-            let _ = app.emit("wsl:auto_config_result", &report);
+            crate::app::heartbeat_watchdog::gated_emit(&app, "wsl:auto_config_result", &report);
             return Err(report.message);
         }
     };
@@ -452,7 +450,7 @@ async fn do_wsl_auto_configure(
         "WSL startup auto-configure completed"
     );
 
-    let _ = app.emit("wsl:auto_config_result", &report);
+    crate::app::heartbeat_watchdog::gated_emit(&app, "wsl:auto_config_result", &report);
 
     Ok(())
 }

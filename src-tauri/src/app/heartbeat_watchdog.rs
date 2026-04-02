@@ -8,6 +8,7 @@
 //!   it triggers recovery with exponential backoff + circuit breaker.
 
 use serde::Serialize;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{Emitter, Manager};
@@ -68,14 +69,38 @@ impl Default for WatchdogInner {
     }
 }
 
-#[derive(Default)]
 pub(crate) struct HeartbeatWatchdogState {
     inner: Mutex<WatchdogInner>,
+    /// `false` when the WebView is confirmed unresponsive (reload failed).
+    /// Checked by event emitters to skip sending to a dead WebView.
+    webview_alive: AtomicBool,
+}
+
+impl Default for HeartbeatWatchdogState {
+    fn default() -> Self {
+        Self {
+            inner: Mutex::new(WatchdogInner::default()),
+            webview_alive: AtomicBool::new(true),
+        }
+    }
 }
 
 impl HeartbeatWatchdogState {
+    /// Returns `true` when the WebView is believed to be responsive.
+    /// Event emitters should skip `app.emit()` when this returns `false`.
+    pub(crate) fn is_webview_alive(&self) -> bool {
+        self.webview_alive.load(Ordering::Relaxed)
+    }
+
+    fn set_webview_alive(&self, alive: bool) {
+        self.webview_alive.store(alive, Ordering::Relaxed);
+    }
+
     pub(crate) fn record_pong(&self) {
         let now = now_unix_millis();
+        // A pong proves the WebView is alive.
+        self.set_webview_alive(true);
+
         let mut inner = self
             .inner
             .lock()
@@ -139,6 +164,23 @@ impl HeartbeatWatchdogState {
     }
 }
 
+/// Emit an event only when the WebView is believed to be alive.
+/// Use this from any module that sends events to the frontend.
+pub(crate) fn gated_emit<S: serde::Serialize + Clone>(
+    app: &tauri::AppHandle,
+    event: &str,
+    payload: S,
+) {
+    let alive = app
+        .try_state::<HeartbeatWatchdogState>()
+        .map(|s| s.is_webview_alive())
+        .unwrap_or(true);
+    if !alive {
+        return;
+    }
+    let _ = app.emit(event, payload);
+}
+
 pub(crate) fn install(app: &tauri::AppHandle) {
     tracing::info!(
         interval_s = HEARTBEAT_INTERVAL.as_secs(),
@@ -151,14 +193,28 @@ pub(crate) fn install(app: &tauri::AppHandle) {
         let mut interval = tokio::time::interval(HEARTBEAT_INTERVAL);
         // First tick is immediate; skip it to avoid double fire at startup.
         interval.tick().await;
+        // Counter used to probe the WebView at reduced frequency when it is marked dead.
+        // Every PROBE_DIVISOR ticks (~60 s) we still emit a heartbeat so that a recovered
+        // WebView can answer with a pong and flip the flag back to alive.
+        let mut tick_counter: u32 = 0;
+        const PROBE_DIVISOR: u32 = 4; // 4 * 15 s = 60 s
         loop {
             interval.tick().await;
+            tick_counter = tick_counter.wrapping_add(1);
 
-            let now = now_unix_millis();
-            let payload = HeartbeatPayload { ts_unix_ms: now };
+            let state = app.state::<HeartbeatWatchdogState>();
+            let alive = state.is_webview_alive();
 
-            if let Err(err) = app.emit(HEARTBEAT_EVENT_NAME, payload) {
-                tracing::debug!("emit heartbeat failed: {}", err);
+            // When the WebView is alive: emit every tick.
+            // When dead: only emit once every PROBE_DIVISOR ticks as a recovery probe.
+            let should_emit = alive || tick_counter.is_multiple_of(PROBE_DIVISOR);
+
+            if should_emit {
+                let now = now_unix_millis();
+                let payload = HeartbeatPayload { ts_unix_ms: now };
+                if let Err(err) = app.emit(HEARTBEAT_EVENT_NAME, payload) {
+                    tracing::debug!("emit heartbeat failed: {}", err);
+                }
             }
 
             check_and_recover_if_needed(&app).await;
@@ -240,11 +296,13 @@ async fn check_and_recover_if_needed(app: &tauri::AppHandle) {
             );
         }
         Err(err) => {
+            // WebView is confirmed unresponsive — gate all event emissions.
+            state.set_webview_alive(false);
             let delay = state.schedule_next_recovery(streak, now);
             tracing::warn!(
                 streak,
                 next_delay_s = delay.as_secs(),
-                "恢复指令下发失败（可能 WebView 已崩溃）：{}",
+                "恢复指令下发失败（可能 WebView 已崩溃），已暂停事件发送：{}",
                 err
             );
         }
